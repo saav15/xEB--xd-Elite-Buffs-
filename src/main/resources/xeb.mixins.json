@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.xeb.xeb.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "xeb.refmap.json",
+  "mixins": [
+    "CombatTrackerMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

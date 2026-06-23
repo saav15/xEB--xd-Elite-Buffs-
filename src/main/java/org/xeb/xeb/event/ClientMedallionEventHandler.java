@@ -93,11 +93,6 @@ public class ClientMedallionEventHandler {
         int packedLight = event.getPackedLight();
         float partialTick = event.getPartialTick();
 
-        // Color overlay using the entity's own texture + model
-        if (Config.colorOverlayEnabled) {
-            renderColorOverlayRaw(poseStack, bufferSource, packedLight, entity, partialTick, medallions, renderer);
-        }
-
         // Medallion 3D models above the entity's head
         org.joml.Vector3f dir = new org.joml.Vector3f(0.0F, 1.0F, 0.0F);
         poseStack.last().pose().transformDirection(dir);
@@ -105,56 +100,12 @@ public class ClientMedallionEventHandler {
         if (scale < 0.001F) scale = 1.0F;
 
         float worldHeight = MedallionRenderLayer.getMedallionWorldHeight(entity);
-        float extraMegaOffset = megaCount * 0.35F * scale;
-        float heightOffset = ((worldHeight + extraMegaOffset) / scale) - 1.501F;
+        float heightOffset = worldHeight / scale;
 
         poseStack.pushPose();
         poseStack.translate(0.0F, -heightOffset, 0.0F);
         MedallionRenderLayer.renderMedallionsStatic(poseStack, bufferSource, packedLight, entity, partialTick);
         poseStack.popPose();
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void renderColorOverlayRaw(PoseStack poseStack, MultiBufferSource bufferSource,
-                                              int packedLight, LivingEntity entity,
-                                              float partialTick, List<MedallionData> medallions,
-                                              LivingEntityRenderer renderer) {
-        try {
-            float time = (entity.tickCount + partialTick) / 20.0F;
-            int colorCount = medallions.size();
-            float red, green, blue;
-
-            if (colorCount == 1) {
-                int color = medallions.get(0).getBuff().getColor();
-                red = ((color >> 16) & 0xFF) / 255.0F;
-                green = ((color >> 8) & 0xFF) / 255.0F;
-                blue = (color & 0xFF) / 255.0F;
-            } else {
-                float indexFloat = (time * 0.7F) % colorCount;
-                int index1 = (int) Math.floor(indexFloat);
-                int index2 = (index1 + 1) % colorCount;
-                float progress = indexFloat - index1;
-                int c1 = medallions.get(index1).getBuff().getColor();
-                int c2 = medallions.get(index2).getBuff().getColor();
-                red = ((c1 >> 16) & 0xFF) / 255.0F + (((c2 >> 16) & 0xFF) / 255.0F - ((c1 >> 16) & 0xFF) / 255.0F) * progress;
-                green = ((c1 >> 8) & 0xFF) / 255.0F + (((c2 >> 8) & 0xFF) / 255.0F - ((c1 >> 8) & 0xFF) / 255.0F) * progress;
-                blue = (c1 & 0xFF) / 255.0F + ((c2 & 0xFF) / 255.0F - (c1 & 0xFF) / 255.0F) * progress;
-            }
-
-            float alpha = 0.86F + (float) Math.sin((entity.tickCount + partialTick) / 3.5F) * 0.12F;
-            float height = entity.getBbHeight();
-
-            ResourceLocation texture = renderer.getTextureLocation(entity);
-            EntityModel model = renderer.getModel();
-
-            poseStack.pushPose();
-            poseStack.translate(0.0D, -height / 2.0D, 0.0D);
-            poseStack.scale(1.015F, 1.015F, 1.015F);
-            poseStack.translate(0.0D, height / 2.0D, 0.0D);
-            VertexConsumer vc = bufferSource.getBuffer(RenderType.entityTranslucent(texture));
-            model.renderToBuffer(poseStack, vc, packedLight, OverlayTexture.NO_OVERLAY, red, green, blue, alpha);
-            poseStack.popPose();
-        } catch (Exception ignored) {}
     }
 
     // ----- Layer detection (cached via reflection) -----
@@ -165,6 +116,7 @@ public class ClientMedallionEventHandler {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static boolean rendererHasMedallionLayer(LivingEntityRenderer renderer) {
         if (renderer == null) return false;
+        if (renderer instanceof software.bernie.geckolib.renderer.GeoRenderer) return true;
         try {
             Class<?> cls = renderer.getClass();
             if (LAYER_FIELD_ABSENT.containsKey(cls)) return false;

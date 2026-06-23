@@ -15,9 +15,11 @@ public class MedallionSpawnHandler {
 
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
+        if (!org.xeb.xeb.Config.enabled) return;
+
         if (event.getLevel().isClientSide()) {
             if (event.getEntity() instanceof LivingEntity living) {
-                net.minecraft.nbt.ListTag pending = org.xeb.xeb.network.MedallionSyncPacket.getPendingSync(living.getId());
+                net.minecraft.nbt.ListTag pending = org.xeb.xeb.network.ClientPacketHandler.getPendingSync(living.getId());
                 if (pending != null) {
                     living.getPersistentData().put(org.xeb.xeb.medallion.MedallionManager.MEDALLIONS_KEY, pending);
                     try {
@@ -31,7 +33,20 @@ public class MedallionSpawnHandler {
         if (event.getEntity() instanceof LivingEntity living && !(living instanceof Player)) {
             // Check if eligible
             if (ModCompatManager.isEligible(living)) {
-                MedallionManager.assignRandomMedallions(living, (ServerLevel) event.getLevel());
+                if (living.getPersistentData().contains(MedallionManager.MEDALLIONS_KEY)) {
+                    java.util.List<org.xeb.xeb.medallion.MedallionData> medallions = MedallionManager.getMedallions(living);
+                    for (org.xeb.xeb.medallion.MedallionData m : medallions) {
+                        try {
+                            m.getBuff().onAttach(living, m.getUniqueId());
+                        } catch (Exception e) {
+                            // safeguard
+                        }
+                    }
+                    MedallionManager.refreshDimensionsIfNeeded(living, medallions);
+                    MedallionManager.syncToTracking(living);
+                } else {
+                    MedallionManager.assignRandomMedallions(living, (ServerLevel) event.getLevel());
+                }
             }
         }
     }

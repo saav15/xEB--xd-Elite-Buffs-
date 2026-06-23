@@ -14,6 +14,9 @@
   "xeb.medallion.tier.bronze":    "Bronze",
   "xeb.medallion.tier.silver":    "Silver",
   "xeb.medallion.tier.gold":      "Gold",
+  "xeb.medallion.tier.common":    "Bronze",
+  "xeb.medallion.tier.rare":      "Silver",
+  "xeb.medallion.tier.legendary": "Gold",
 
   "xeb.buff.spiky":               "Spiky",
   "xeb.buff.reactive":            "Reactive",
@@ -42,5 +45,9 @@
   "xeb.buff.mad":                 "Mad",
   "xeb.buff.twin":                "Twin",
   "xeb.buff.hardy":               "Hardy",
-  "xeb.buff.sticky":              "Sticky"
+  "xeb.buff.sticky":              "Sticky",
+  "entity.xeb.elite_fly":         "Elite Fly Projectile",
+  "attribute.name.xeb.mana":       "Mana",
+  "effect.xeb.kinetic_spikes": "Kinetic Spikes",
+  "entity.xeb.sparkle": "Sparkle"
 }

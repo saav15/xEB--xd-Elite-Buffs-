@@ -17,7 +17,12 @@ public enum MedallionType {
         return color;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public net.minecraft.network.chat.Component getDisplayName() {
+        String tierKey = switch (this) {
+            case COMMON -> "bronze";
+            case RARE -> "silver";
+            case LEGENDARY -> "gold";
+        };
+        return net.minecraft.network.chat.Component.translatable("xeb.medallion.tier." + tierKey);
     }
 }

@@ -105,13 +105,11 @@ public class MedallionRenderLayer<T extends LivingEntity, M extends EntityModel<
         }
 
         float worldHeight = getMedallionWorldHeight(entity);
-        // Add extra height for mega medallions, scaled proportionally
-        float extraMegaOffset = megaCount * 0.35F * scale;
 
         // In vanilla LivingEntityRenderer, the model is translated by -1.501F blocks.
         // So the current origin of the PoseStack is already 1.501F blocks above the feet.
         // We subtract 1.501F blocks to get the correct offset from the current origin.
-        float heightOffset = ((worldHeight + extraMegaOffset) / scale) - 1.501F;
+        float heightOffset = (worldHeight / scale) - 1.501F;
 
         poseStack.pushPose();
         poseStack.translate(0.0F, -heightOffset, 0.0F);

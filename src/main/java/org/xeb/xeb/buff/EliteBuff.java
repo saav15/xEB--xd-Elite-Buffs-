@@ -35,8 +35,8 @@ public abstract class EliteBuff {
         return id;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public net.minecraft.network.chat.Component getDisplayName() {
+        return net.minecraft.network.chat.Component.translatable("xeb.buff." + this.id);
     }
 
     public BuffType getBuffType() {

@@ -157,6 +157,9 @@ public class Xeb {
             // Register client entity renderer for EliteFly using software.bernie.geckolib.renderer.GeoEntityRenderer
             event.registerEntityRenderer(ModEntities.ELITE_FLY.get(),
                     context -> new software.bernie.geckolib.renderer.GeoEntityRenderer<>(context, new EliteFlyModel()));
+            // Register client entity renderer for Sparkle using NoopRenderer
+            event.registerEntityRenderer(ModEntities.SPARKLE.get(),
+                    net.minecraft.client.renderer.entity.NoopRenderer::new);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})

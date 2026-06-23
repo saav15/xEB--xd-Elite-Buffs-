@@ -23,21 +23,40 @@ public class BuffDamageHandler {
 
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
+        if (!org.xeb.xeb.Config.enabled) return;
         LivingEntity target = event.getEntity();
         if (target == null) return;
 
-        // Reduce damage dealt by entities affected by All Stats Down
         Entity attacker = event.getSource().getEntity();
-        if (attacker instanceof LivingEntity livingAttacker) {
-            if (livingAttacker.hasEffect(ModEffects.ALL_STATS_DOWN.get())) {
-                int amp = livingAttacker.getEffect(ModEffects.ALL_STATS_DOWN.get()).getAmplifier();
-                float reduction = 0.10F * (amp + 1); // 10%, 20%, 30%
-                event.setAmount(event.getAmount() * (1.0F - reduction));
-            }
-            if (livingAttacker.hasEffect(ModEffects.ALL_STATS_UP.get())) {
-                int amp = livingAttacker.getEffect(ModEffects.ALL_STATS_UP.get()).getAmplifier();
-                float boost = 0.10F * (amp + 1); // +10%, +20%, +30%
-                event.setAmount(event.getAmount() * (1.0F + boost));
+
+        // Kinetic Spikes logic
+        if (!target.level().isClientSide() && target.hasEffect(ModEffects.KINETIC_SPIKES.get())) {
+            net.minecraft.world.effect.MobEffectInstance effect = target.getEffect(ModEffects.KINETIC_SPIKES.get());
+            if (effect != null) {
+                int amplifier = effect.getAmplifier();
+                double baseDamage = 1.0D;
+                if (target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) != null) {
+                    baseDamage = target.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                }
+                double projectileDamage = baseDamage * (0.10D + 0.15D * amplifier);
+                int count = 2 + target.getRandom().nextInt(2); // 2 or 3 Sparkles
+                
+                // Find nearest enemy using player-friendly logic
+                LivingEntity projectileTarget = findNearestEnemy(target, 16.0D);
+                
+                for (int i = 0; i < count; i++) {
+                    org.xeb.xeb.entity.SparkleEntity sparkle = new org.xeb.xeb.entity.SparkleEntity(
+                            target.level(), target, projectileDamage, projectileTarget);
+                    sparkle.moveTo(target.getX(), target.getY(0.5D), target.getZ(), 0.0F, 0.0F);
+                    target.level().addFreshEntity(sparkle);
+
+                    // Play Amethyst step sound with randomized pitch
+                    target.level().playSound(null, target.getX(), target.getY(), target.getZ(),
+                            net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_STEP,
+                            net.minecraft.sounds.SoundSource.NEUTRAL,
+                            1.0F,
+                            0.5F + target.getRandom().nextFloat() * 1.0F);
+                }
             }
         }
 
@@ -78,6 +97,11 @@ public class BuffDamageHandler {
 
         // Route damage dealt to attacker's buffs
         if (attacker instanceof LivingEntity livingAttacker) {
+            // Register damage dealt to prevent frozen AI detection triggering
+            if (livingAttacker instanceof net.minecraft.world.entity.Mob) {
+                org.xeb.xeb.boss.FrozenBossRecoverySystem.registerDamageDealt(livingAttacker);
+            }
+
             List<MedallionData> attackerMedallions = MedallionManager.getMedallions(livingAttacker);
             if (!attackerMedallions.isEmpty()) {
                 for (MedallionData m : attackerMedallions) {
@@ -119,6 +143,26 @@ public class BuffDamageHandler {
         }
 
         if (mob.hasEffect(ModEffects.MADNESS.get())) {
+            // If the entity is blacklisted, block Madness targeting completely
+            if (org.xeb.xeb.boss.UniversalBossDetector.isBlacklisted(mob)) {
+                return;
+            }
+
+            boolean isBoss = org.xeb.xeb.compat.ModCompatManager.isBoss(mob);
+            LivingEntity newTargetChoice = event.getNewTarget();
+            
+            // If the boss naturally selected a valid target (Player, Boss, or Elite),
+            // let it stand to avoid AI override freeze loops.
+            if (isBoss && newTargetChoice != null) {
+                boolean isValidTarget = newTargetChoice instanceof net.minecraft.world.entity.player.Player ||
+                                       org.xeb.xeb.compat.ModCompatManager.isBoss(newTargetChoice) ||
+                                       !org.xeb.xeb.medallion.MedallionManager.getMedallions(newTargetChoice).isEmpty();
+                if (isValidTarget && !org.xeb.xeb.boss.TargetRejectionBuffer.isRejected(mob, newTargetChoice.getId())) {
+                    mob.getPersistentData().putInt("xebMadnessTargetId", newTargetChoice.getId());
+                    return;
+                }
+            }
+
             net.minecraft.world.effect.MobEffectInstance effect = mob.getEffect(ModEffects.MADNESS.get());
             int amplifier = effect != null ? effect.getAmplifier() : 0;
             double range = 16.0D + amplifier * 4.0D;
@@ -128,10 +172,22 @@ public class BuffDamageHandler {
 
             if (tag.contains("xebMadnessTargetId")) {
                 int targetId = tag.getInt("xebMadnessTargetId");
-                Entity cached = mob.level().getEntity(targetId);
-                if (cached instanceof LivingEntity living && living.isAlive() && mob.distanceToSqr(living) <= range * range) {
-                    if (!(living instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))) {
-                        target = living;
+                // Check if target was recently rejected
+                if (org.xeb.xeb.boss.TargetRejectionBuffer.isRejected(mob, targetId)) {
+                    tag.remove("xebMadnessTargetId");
+                } else {
+                    Entity cached = mob.level().getEntity(targetId);
+                    if (cached instanceof LivingEntity living && living.isAlive() && mob.distanceToSqr(living) <= range * range) {
+                        boolean isValid = !(living instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))
+                                && !org.xeb.xeb.boss.UniversalBossDetector.isBlacklisted(living);
+                        if (isValid && isBoss && !org.xeb.xeb.boss.BossTargetCandidateExpander.shouldAttackAllMobs(mob)) {
+                            isValid = living instanceof net.minecraft.world.entity.player.Player ||
+                                      org.xeb.xeb.compat.ModCompatManager.isBoss(living) ||
+                                      !org.xeb.xeb.medallion.MedallionManager.getMedallions(living).isEmpty();
+                        }
+                        if (isValid) {
+                            target = living;
+                        }
                     }
                 }
             }
@@ -154,10 +210,25 @@ public class BuffDamageHandler {
     }
 
     private static LivingEntity findNewMadnessTarget(net.minecraft.world.entity.Mob mob, double range) {
+        boolean isBoss = org.xeb.xeb.compat.ModCompatManager.isBoss(mob);
         net.minecraft.world.phys.AABB searchBox = mob.getBoundingBox().inflate(range);
         List<LivingEntity> potentialTargets = mob.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                target -> target != mob && target.isAlive() && mob.hasLineOfSight(target) &&
-                          !(target instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator())));
+                target -> {
+                    if (target == mob || !target.isAlive() || !mob.hasLineOfSight(target)) return false;
+                    if (target instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator())) return false;
+                    if (org.xeb.xeb.boss.UniversalBossDetector.isBlacklisted(target)) return false;
+                    if (org.xeb.xeb.boss.TargetRejectionBuffer.isRejected(mob, target.getId())) return false;
+
+                    if (isBoss) {
+                        if (org.xeb.xeb.boss.BossTargetCandidateExpander.shouldAttackAllMobs(mob)) {
+                            return true;
+                        }
+                        return target instanceof net.minecraft.world.entity.player.Player ||
+                               org.xeb.xeb.compat.ModCompatManager.isBoss(target) ||
+                               !org.xeb.xeb.medallion.MedallionManager.getMedallions(target).isEmpty();
+                    }
+                    return true;
+                });
         
         if (!potentialTargets.isEmpty()) {
             return potentialTargets.get(mob.getRandom().nextInt(potentialTargets.size()));
@@ -180,5 +251,55 @@ public class BuffDamageHandler {
                 event.setNewSpeed(event.getNewSpeed() * (1.0F + boost));
             }
         }
+    }
+
+    public static LivingEntity findNearestEnemy(LivingEntity owner, double range) {
+        net.minecraft.world.phys.AABB box = owner.getBoundingBox().inflate(range);
+        List<LivingEntity> list = owner.level().getEntitiesOfClass(LivingEntity.class, box,
+            entity -> {
+                if (entity == owner || !entity.isAlive()) return false;
+                if (entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator())) return false;
+                
+                // Do not target allies
+                if (owner.isAlliedTo(entity)) return false;
+                
+                // Do not target pets owned by the owner
+                if (entity instanceof net.minecraft.world.entity.TamableAnimal tame && tame.isOwnedBy(owner)) return false;
+                
+                return true;
+            });
+        
+        LivingEntity nearest = null;
+        double minDist = Double.MAX_VALUE;
+        
+        // Prioritize monsters/bosses/players first if the owner is a player
+        if (owner instanceof net.minecraft.world.entity.player.Player) {
+            for (LivingEntity e : list) {
+                boolean isHostile = e instanceof net.minecraft.world.entity.monster.Enemy ||
+                                    e instanceof net.minecraft.world.entity.player.Player ||
+                                    org.xeb.xeb.compat.ModCompatManager.isBoss(e);
+                if (isHostile) {
+                    double dist = owner.distanceToSqr(e);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = e;
+                    }
+                }
+            }
+        }
+        
+        // Fallback to any living entity if no primary hostile target is found
+        if (nearest == null) {
+            minDist = Double.MAX_VALUE;
+            for (LivingEntity e : list) {
+                double dist = owner.distanceToSqr(e);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = e;
+                }
+            }
+        }
+        
+        return nearest;
     }
 }

@@ -19,11 +19,36 @@ public class MadnessEffect extends MobEffect {
         if (entity.level().isClientSide()) return;
         if (!(entity instanceof Mob mob)) return;
 
+        // Block Madness ticks if entity is blacklisted
+        if (org.xeb.xeb.boss.UniversalBossDetector.isBlacklisted(mob)) {
+            return;
+        }
+
+        // Tick recovery trackers, target buffer, and candidate expander
+        org.xeb.xeb.boss.TargetRejectionBuffer.tick(mob);
+        org.xeb.xeb.boss.BossTargetCandidateExpander.tick(mob);
+        org.xeb.xeb.boss.FrozenBossRecoverySystem.tick(mob);
+
+        boolean isBoss = org.xeb.xeb.compat.ModCompatManager.isBoss(mob);
         double range = 16.0D + amplifier * 4.0D;
         AABB searchBox = mob.getBoundingBox().inflate(range);
         List<LivingEntity> potentialTargets = mob.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                target -> target != mob && target.isAlive() && mob.hasLineOfSight(target) &&
-                          !(target instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator())));
+                target -> {
+                    if (target == mob || !target.isAlive() || !mob.hasLineOfSight(target)) return false;
+                    if (target instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator())) return false;
+                    if (org.xeb.xeb.boss.UniversalBossDetector.isBlacklisted(target)) return false;
+                    if (org.xeb.xeb.boss.TargetRejectionBuffer.isRejected(mob, target.getId())) return false;
+
+                    if (isBoss) {
+                        if (org.xeb.xeb.boss.BossTargetCandidateExpander.shouldAttackAllMobs(mob)) {
+                            return true;
+                        }
+                        return target instanceof net.minecraft.world.entity.player.Player ||
+                               org.xeb.xeb.compat.ModCompatManager.isBoss(target) ||
+                               !org.xeb.xeb.medallion.MedallionManager.getMedallions(target).isEmpty();
+                    }
+                    return true;
+                });
 
         LivingEntity currentTarget = mob.getTarget();
         boolean shouldSwitch = currentTarget == null || !currentTarget.isAlive()
@@ -64,12 +89,11 @@ public class MadnessEffect extends MobEffect {
             mob.hurtMarked = true;
         }
 
-        // 10% chance: random jump lunge toward or away from target
+        // 10% chance: random lunge
         if (rand < 0.10F && mob.onGround()) {
             LivingEntity target = mob.getTarget();
             if (target != null) {
                 Vec3 dir = target.position().subtract(mob.position()).normalize();
-                // 50/50: lunge toward or away
                 double sign = mob.getRandom().nextBoolean() ? 1.0 : -1.0;
                 mob.setDeltaMovement(
                         mob.getDeltaMovement().x + dir.x * sign * 0.4,
@@ -83,7 +107,6 @@ public class MadnessEffect extends MobEffect {
 
     @Override
     public boolean isDurationEffectTick(int duration, int amplifier) {
-        // Run every 10 ticks (2× per second) instead of 20 — more reactive
         return duration % 10 == 0;
     }
 }

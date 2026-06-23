@@ -19,6 +19,7 @@ public class BuffTickHandler {
 
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
+        if (!org.xeb.xeb.Config.enabled) return;
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
 
@@ -66,6 +67,26 @@ public class BuffTickHandler {
                 if (tag.contains("xebPlayerHolyShieldActive") || tag.contains("xebPlayerHolyShieldTimer")) {
                     tag.remove("xebPlayerHolyShieldActive");
                     tag.remove("xebPlayerHolyShieldTimer");
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onItemUseFinish(net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish event) {
+        if (!org.xeb.xeb.Config.enabled) return;
+        LivingEntity user = event.getEntity();
+        if (user == null || user.level().isClientSide()) return;
+
+        double searchRadius = 8.0D;
+        net.minecraft.world.phys.AABB aabb = user.getBoundingBox().inflate(searchRadius);
+        List<LivingEntity> nearby = user.level().getEntitiesOfClass(LivingEntity.class, aabb);
+
+        for (LivingEntity nearbyEntity : nearby) {
+            List<MedallionData> medallions = MedallionManager.getMedallions(nearbyEntity);
+            for (MedallionData m : medallions) {
+                if (m.getBuff() instanceof org.xeb.xeb.buff.impl.ResonantBuff resonantBuff) {
+                    resonantBuff.handleNearbyItemUse(nearbyEntity, event);
                 }
             }
         }

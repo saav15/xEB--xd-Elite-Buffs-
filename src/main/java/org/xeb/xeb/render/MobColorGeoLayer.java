@@ -78,11 +78,8 @@ public class MobColorGeoLayer<T extends GeoAnimatable> extends GeoRenderLayer<T>
 
         poseStack.pushPose();
         
-        float height = entity.getBbHeight();
-        // Shift outward slightly to minimize any potential z-fighting on complex layers
-        poseStack.translate(0.0D, -height / 2.0D, 0.0D);
-        poseStack.scale(1.015F, 1.015F, 1.015F);
-        poseStack.translate(0.0D, height / 2.0D, 0.0D);
+        // Scale slightly outward from base to prevent z-fighting without translating
+        poseStack.scale(1.002F, 1.002F, 1.002F);
 
         getRenderer().reRender(bakedModel, poseStack, bufferSource, animatable, translucentType, vertexConsumer, partialTick, packedLight, OverlayTexture.NO_OVERLAY, red, green, blue, alpha);
 

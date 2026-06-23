@@ -9,7 +9,9 @@ import net.minecraftforge.fml.ModList;
 import org.xeb.xeb.Xeb;
 import org.xeb.xeb.compat.hooks.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class ModCompatManager {
@@ -18,6 +20,12 @@ public class ModCompatManager {
 
     private static final TagKey<EntityType<?>> ELITE_ELIGIBLE_TAG = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(Xeb.MODID, "elite_eligible"));
     private static final TagKey<EntityType<?>> BOSSES_TAG = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation(Xeb.MODID, "bosses"));
+
+    private static final List<ModCompatAdapter> ADAPTERS = new ArrayList<>();
+
+    public static List<ModCompatAdapter> getAdapters() {
+        return ADAPTERS;
+    }
 
     public static void registerEligible(EntityType<?> type) {
         if (type != null) ELIGIBLE_TYPES.add(type);
@@ -39,6 +47,11 @@ public class ModCompatManager {
     }
 
     public static boolean isBoss(LivingEntity entity) {
+        return org.xeb.xeb.boss.UniversalBossDetector.isBoss(entity);
+    }
+
+    public static boolean isBossLegacy(LivingEntity entity) {
+        if (entity == null) return false;
         EntityType<?> type = entity.getType();
         // Check dynamic set
         if (BOSS_TYPES.contains(type)) return true;
@@ -48,7 +61,30 @@ public class ModCompatManager {
         return entity.getMaxHealth() >= 100.0F;
     }
 
+    public static boolean isBossInTransition(LivingEntity entity) {
+        for (ModCompatAdapter adapter : ADAPTERS) {
+            if (adapter instanceof org.xeb.xeb.compat.adapter.CataclysmAdapter cataclysmAdapter) {
+                if (cataclysmAdapter.isLoaded() && cataclysmAdapter.isTransitioning(entity)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static void init() {
+        // Register adapters
+        ADAPTERS.add(new org.xeb.xeb.bettercombat.BetterCombatCompatAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.CataclysmAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.EpicFightAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.IronSpellsAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.ApotheosisAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.TetraAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.TConstructAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.ArtifactsAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.AlexsMobsAdapter());
+        ADAPTERS.add(new org.xeb.xeb.compat.adapter.CuriosAdapter());
+
         // Vanilla is always loaded
         new VanillaMobHook().registerTypes();
 

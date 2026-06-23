@@ -41,6 +41,8 @@ public class TwinBuff extends EliteBuff {
                 if (twin != null) {
                     twin.getPersistentData().putBoolean(IS_TWIN_KEY, true);
                     twin.moveTo(entity.getX() + 1.5D, entity.getY(), entity.getZ() + 1.5D, entity.getYRot(), entity.getXRot());
+                    // Pre-set empty medallions list so EntityJoinLevelEvent doesn't roll random ones
+                    MedallionManager.saveMedallions(twin, java.util.Collections.emptyList());
                     entity.level().addFreshEntity(twin);
                     
                     // Copy medallions (this triggers copyMedallions which copies NBT and invokes attach on all copied buffs)

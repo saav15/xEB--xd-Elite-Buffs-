@@ -30,7 +30,11 @@ public class DeathMessageHelper {
             };
             
             // Add medallion 3D-like icon representation (e.g. ● or a colored bracketed icon) and name
-            hoverText.append(tierColor + "● §r" + m.getBuff().getDisplayName() + " (" + tierColor + m.getTier().getDisplayName() + "§r)\n");
+            hoverText.append(Component.literal(tierColor + "● §r"))
+                     .append(m.getBuff().getDisplayName())
+                     .append(Component.literal(" (" + tierColor))
+                     .append(m.getTier().getDisplayName())
+                     .append(Component.literal("§r)\n"));
             
             // Add a vague description of the effect
             String desc = getVagueDescription(m.getBuff().getId());

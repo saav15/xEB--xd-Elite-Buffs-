@@ -18,6 +18,13 @@ public class ModEntities {
                     .build("elite_fly")
     );
 
+    public static final RegistryObject<EntityType<SparkleEntity>> SPARKLE = ENTITY_TYPES.register("sparkle",
+            () -> EntityType.Builder.<SparkleEntity>of(SparkleEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F)
+                    .clientTrackingRange(8)
+                    .build("sparkle")
+    );
+
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);
     }

@@ -67,15 +67,8 @@ public class MobColorOverlay<T extends LivingEntity, M extends EntityModel<T>> e
         
         poseStack.pushPose();
         
-        float width = entity.getBbWidth();
-        float height = entity.getBbHeight();
-        
-        // Translate to the center of the entity's bounding box (Y is inverted, so UP is negative Y)
-        poseStack.translate(0.0D, -height / 2.0D, 0.0D);
-        // Scale slightly outward to prevent z-fighting
-        poseStack.scale(1.015F, 1.015F, 1.015F);
-        // Translate back to base (Y is inverted, so DOWN is positive Y)
-        poseStack.translate(0.0D, height / 2.0D, 0.0D);
+        // Scale slightly outward from base to prevent z-fighting without translating
+        poseStack.scale(1.002F, 1.002F, 1.002F);
         
         // Render base model again as a translucent overlay
         VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(texture));

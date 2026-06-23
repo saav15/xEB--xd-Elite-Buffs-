@@ -19,6 +19,7 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> MADNESS = EFFECTS.register("madness", MadnessEffect::new);
     public static final RegistryObject<MobEffect> ALL_STATS_DOWN = EFFECTS.register("all_stats_down", AllStatsDownEffect::new);
     public static final RegistryObject<MobEffect> ALL_STATS_UP = EFFECTS.register("all_stats_up", AllStatsUpEffect::new);
+    public static final RegistryObject<MobEffect> KINETIC_SPIKES = EFFECTS.register("kinetic_spikes", KineticSpikesEffect::new);
 
     public static void register(IEventBus eventBus) {
         EFFECTS.register(eventBus);

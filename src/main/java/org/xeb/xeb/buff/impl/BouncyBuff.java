@@ -31,11 +31,11 @@ public class BouncyBuff extends EliteBuff {
                 dir = dir.normalize();
                 
                 // Knockback entity away from attacker
-                entity.knockback(1.2D, dir.x, dir.z);
+                entity.knockback(1.2D, -dir.x, -dir.z);
                 entity.hurtMarked = true;
                 
                 // Knockback attacker away from entity
-                livingAttacker.knockback(1.2D, -dir.x, -dir.z);
+                livingAttacker.knockback(1.2D, dir.x, dir.z);
                 livingAttacker.hurtMarked = true;
             }
         }

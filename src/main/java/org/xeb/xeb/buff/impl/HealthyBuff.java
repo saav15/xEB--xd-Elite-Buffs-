@@ -13,30 +13,34 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import java.util.UUID;
 
 public class HealthyBuff extends EliteBuff {
-    private static final UUID HEALTH_MODIFIER_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de0899ac");
-
     public HealthyBuff() {
-        super("healthy", "Healthy", BuffType.ENEMY_ONLY, 0x228B22, 5.0D);
+        super("healthy", "Healthy", BuffType.ENEMY_ONLY, 0x228B22, 5.0D, true);
     }
 
     @Override
-    public void onAttach(LivingEntity entity) {
+    public void onAttach(LivingEntity entity) {}
+
+    @Override
+    public void onAttach(LivingEntity entity, UUID medallionId) {
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth != null) {
-            AttributeModifier modifier = new AttributeModifier(HEALTH_MODIFIER_UUID, "Healthy Buff Max Health", 4.0D, AttributeModifier.Operation.ADDITION);
+            AttributeModifier modifier = new AttributeModifier(medallionId, "Healthy Buff Max Health", 4.0D, AttributeModifier.Operation.ADDITION);
             maxHealth.addTransientModifier(modifier);
-            // Heal the entity by the amount added
             entity.heal(4.0F);
         }
+        // Refresh Regen (level 2 = Regen III in UI, doesn't stack but persists)
         entity.addEffect(new MobEffectInstance(MobEffects.REGENERATION, -1, 2, false, false, false));
     }
 
     @Override
-    public void onDetach(LivingEntity entity) {
+    public void onDetach(LivingEntity entity) {}
+
+    @Override
+    public void onDetach(LivingEntity entity, UUID medallionId) {
         entity.removeEffect(MobEffects.REGENERATION);
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth != null) {
-            maxHealth.removeModifier(HEALTH_MODIFIER_UUID);
+            maxHealth.removeModifier(medallionId);
         }
     }
 

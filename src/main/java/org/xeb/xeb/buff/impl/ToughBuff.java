@@ -12,27 +12,33 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import java.util.UUID;
 
 public class ToughBuff extends EliteBuff {
-    private static final UUID ARMOR_MODIFIER_UUID = UUID.fromString("6f0cd17e-976d-4952-ba61-8f55e09f5fa4");
-
     public ToughBuff() {
-        super("tough", "Tough", BuffType.UNIVERSAL, 0x696969, 10.0D);
+        super("tough", "Tough", BuffType.UNIVERSAL, 0x696969, 10.0D, true);
     }
 
     @Override
-    public void onAttach(LivingEntity entity) {
+    public void onAttach(LivingEntity entity) {}
+
+    @Override
+    public void onAttach(LivingEntity entity, UUID medallionId) {
         AttributeInstance instance = entity.getAttribute(Attributes.ARMOR);
         if (instance != null) {
-            double amount = MedallionManager.isBoss(entity) ? 1.0D : 2.0D;
-            AttributeModifier modifier = new AttributeModifier(ARMOR_MODIFIER_UUID, "Tough Buff Modifier", amount, AttributeModifier.Operation.ADDITION);
-            instance.addTransientModifier(modifier);
+            if (instance.getModifier(medallionId) == null) {
+                double amount = MedallionManager.isBoss(entity) ? 1.0D : 2.0D;
+                AttributeModifier modifier = new AttributeModifier(medallionId, "Tough Buff Modifier", amount, AttributeModifier.Operation.ADDITION);
+                instance.addTransientModifier(modifier);
+            }
         }
     }
 
     @Override
-    public void onDetach(LivingEntity entity) {
+    public void onDetach(LivingEntity entity) {}
+
+    @Override
+    public void onDetach(LivingEntity entity, UUID medallionId) {
         AttributeInstance instance = entity.getAttribute(Attributes.ARMOR);
         if (instance != null) {
-            instance.removeModifier(ARMOR_MODIFIER_UUID);
+            instance.removeModifier(medallionId);
         }
     }
 

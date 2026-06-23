@@ -44,5 +44,30 @@ public class BuffTickHandler {
                 mob.setNoAi(false);
             }
         }
+
+        // Player-specific Holy Shield (holy mantle) regeneration
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            net.minecraft.nbt.CompoundTag tag = player.getPersistentData();
+            if (player.hasEffect(ModEffects.HOLY_SHIELD.get()) && !tag.contains("xebHolyShield")) {
+                if (tag.contains("xebPlayerHolyShieldTimer")) {
+                    int timer = tag.getInt("xebPlayerHolyShieldTimer");
+                    if (timer > 0) {
+                        tag.putInt("xebPlayerHolyShieldTimer", timer - 1);
+                    } else {
+                        tag.remove("xebPlayerHolyShieldTimer");
+                        tag.putBoolean("xebPlayerHolyShieldActive", true);
+                        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                                net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE, net.minecraft.sounds.SoundSource.PLAYERS, 0.5F, 1.5F);
+                    }
+                } else if (!tag.contains("xebPlayerHolyShieldActive")) {
+                    tag.putBoolean("xebPlayerHolyShieldActive", true);
+                }
+            } else {
+                if (tag.contains("xebPlayerHolyShieldActive") || tag.contains("xebPlayerHolyShieldTimer")) {
+                    tag.remove("xebPlayerHolyShieldActive");
+                    tag.remove("xebPlayerHolyShieldTimer");
+                }
+            }
+        }
     }
 }

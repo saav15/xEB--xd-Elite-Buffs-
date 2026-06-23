@@ -14,46 +14,70 @@ import net.minecraftforge.network.PacketDistributor;
 import java.util.UUID;
 
 public class MegaBuff extends EliteBuff {
-    private static final UUID MEGA_HEALTH_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de08ab30");
-    private static final UUID MEGA_DAMAGE_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de08ab31");
-    private static final UUID MEGA_SPEED_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de08ab32");
-
+    // Each Mega medallion uses its own UUID — stacking gives cumulative +50% per medallion
     public MegaBuff() {
-        super("mega", "Mega", BuffType.ENEMY_ONLY, 0xFF1493, 1.0D);
+        super("mega", "Mega", BuffType.ENEMY_ONLY, 0xFF1493, 1.0D, true);
     }
 
     @Override
-    public void onAttach(LivingEntity entity) {
+    public void onAttach(LivingEntity entity) {}
+
+    @Override
+    public void onAttach(LivingEntity entity, UUID medallionId) {
+        // Derive unique UUIDs per-attribute from the medallion UUID
+        UUID healthUUID = new UUID(medallionId.getMostSignificantBits() ^ 0x1L, medallionId.getLeastSignificantBits());
+        UUID damageUUID = new UUID(medallionId.getMostSignificantBits() ^ 0x2L, medallionId.getLeastSignificantBits());
+        UUID speedUUID  = new UUID(medallionId.getMostSignificantBits() ^ 0x3L, medallionId.getLeastSignificantBits());
+
         // +50% Max Health
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth != null) {
-            maxHealth.addTransientModifier(new AttributeModifier(MEGA_HEALTH_UUID, "Mega Health modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
-            entity.heal((float) (entity.getMaxHealth() * 0.5));
+            if (maxHealth.getModifier(healthUUID) == null) {
+                maxHealth.addTransientModifier(new AttributeModifier(healthUUID, "Mega Health modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+                entity.heal((float) (entity.getMaxHealth() * 0.5));
+            }
         }
 
         // +50% Damage
         AttributeInstance attackDmg = entity.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attackDmg != null) {
-            attackDmg.addTransientModifier(new AttributeModifier(MEGA_DAMAGE_UUID, "Mega Damage modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            if (attackDmg.getModifier(damageUUID) == null) {
+                attackDmg.addTransientModifier(new AttributeModifier(damageUUID, "Mega Damage modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            }
         }
 
         // +50% Attack Speed
         AttributeInstance attackSpeed = entity.getAttribute(Attributes.ATTACK_SPEED);
         if (attackSpeed != null) {
-            attackSpeed.addTransientModifier(new AttributeModifier(MEGA_SPEED_UUID, "Mega Attack Speed modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            if (attackSpeed.getModifier(speedUUID) == null) {
+                attackSpeed.addTransientModifier(new AttributeModifier(speedUUID, "Mega Attack Speed modifier", 0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            }
         }
+
+        // Force hitbox recalculation
+        entity.refreshDimensions();
     }
 
     @Override
-    public void onDetach(LivingEntity entity) {
+    public void onDetach(LivingEntity entity) {}
+
+    @Override
+    public void onDetach(LivingEntity entity, UUID medallionId) {
+        UUID healthUUID = new UUID(medallionId.getMostSignificantBits() ^ 0x1L, medallionId.getLeastSignificantBits());
+        UUID damageUUID = new UUID(medallionId.getMostSignificantBits() ^ 0x2L, medallionId.getLeastSignificantBits());
+        UUID speedUUID  = new UUID(medallionId.getMostSignificantBits() ^ 0x3L, medallionId.getLeastSignificantBits());
+
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHealth != null) maxHealth.removeModifier(MEGA_HEALTH_UUID);
+        if (maxHealth != null) maxHealth.removeModifier(healthUUID);
 
         AttributeInstance attackDmg = entity.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (attackDmg != null) attackDmg.removeModifier(MEGA_DAMAGE_UUID);
+        if (attackDmg != null) attackDmg.removeModifier(damageUUID);
 
         AttributeInstance attackSpeed = entity.getAttribute(Attributes.ATTACK_SPEED);
-        if (attackSpeed != null) attackSpeed.removeModifier(MEGA_SPEED_UUID);
+        if (attackSpeed != null) attackSpeed.removeModifier(speedUUID);
+
+        // Force hitbox recalculation
+        entity.refreshDimensions();
     }
 
     @Override

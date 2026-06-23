@@ -12,27 +12,31 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import java.util.UUID;
 
 public class DamagingBuff extends EliteBuff {
-    private static final UUID ATTACK_MODIFIER_UUID = UUID.fromString("4907a974-9f44-469b-8ee3-a551de7e7166");
-
     public DamagingBuff() {
-        super("damaging", "Damaging", BuffType.UNIVERSAL, 0xDC143C, 10.0D);
+        super("damaging", "Damaging", BuffType.UNIVERSAL, 0xDC143C, 10.0D, true);
     }
 
     @Override
-    public void onAttach(LivingEntity entity) {
+    public void onAttach(LivingEntity entity) {}
+
+    @Override
+    public void onAttach(LivingEntity entity, UUID medallionId) {
         AttributeInstance instance = entity.getAttribute(Attributes.ATTACK_DAMAGE);
         if (instance != null) {
             double amount = MedallionManager.isBoss(entity) ? 1.0D : 2.0D;
-            AttributeModifier modifier = new AttributeModifier(ATTACK_MODIFIER_UUID, "Damaging Buff Modifier", amount, AttributeModifier.Operation.ADDITION);
+            AttributeModifier modifier = new AttributeModifier(medallionId, "Damaging Buff Modifier", amount, AttributeModifier.Operation.ADDITION);
             instance.addTransientModifier(modifier);
         }
     }
 
     @Override
-    public void onDetach(LivingEntity entity) {
+    public void onDetach(LivingEntity entity) {}
+
+    @Override
+    public void onDetach(LivingEntity entity, UUID medallionId) {
         AttributeInstance instance = entity.getAttribute(Attributes.ATTACK_DAMAGE);
         if (instance != null) {
-            instance.removeModifier(ATTACK_MODIFIER_UUID);
+            instance.removeModifier(medallionId);
         }
     }
 

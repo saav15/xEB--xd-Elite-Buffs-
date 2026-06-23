@@ -20,6 +20,9 @@ public class MedallionSpawnHandler {
                 net.minecraft.nbt.ListTag pending = org.xeb.xeb.network.MedallionSyncPacket.getPendingSync(living.getId());
                 if (pending != null) {
                     living.getPersistentData().put(org.xeb.xeb.medallion.MedallionManager.MEDALLIONS_KEY, pending);
+                    try {
+                        living.refreshDimensions();
+                    } catch (Exception ignored) {}
                 }
             }
             return;
@@ -29,6 +32,31 @@ public class MedallionSpawnHandler {
             // Check if eligible
             if (ModCompatManager.isEligible(living)) {
                 MedallionManager.assignRandomMedallions(living, (ServerLevel) event.getLevel());
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onEntitySize(net.minecraftforge.event.entity.EntityEvent.Size event) {
+        if (event.getEntity() instanceof LivingEntity living && !(living instanceof Player)) {
+            try {
+                java.util.List<org.xeb.xeb.medallion.MedallionData> medallions = MedallionManager.getMedallions(living);
+                if (!medallions.isEmpty()) {
+                    int megaCount = 0;
+                    for (org.xeb.xeb.medallion.MedallionData m : medallions) {
+                        if (m.getBuff().getId().equals("mega")) {
+                            megaCount++;
+                        }
+                    }
+                    if (megaCount > 0) {
+                        float scaleFactor = 1.0F + 0.30F * megaCount;
+                        net.minecraft.world.entity.EntityDimensions original = event.getNewSize();
+                        event.setNewSize(original.scale(scaleFactor));
+                        event.setNewEyeHeight(event.getNewEyeHeight() * scaleFactor);
+                    }
+                }
+            } catch (Exception e) {
+                // Safeguard against early initialization issues
             }
         }
     }

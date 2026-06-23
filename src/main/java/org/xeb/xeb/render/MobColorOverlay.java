@@ -25,6 +25,8 @@ public class MobColorOverlay<T extends LivingEntity, M extends EntityModel<T>> e
         List<MedallionData> medallions = MedallionManager.getMedallions(entity);
         if (medallions.isEmpty()) return;
 
+        if (!org.xeb.xeb.Config.colorOverlayEnabled) return;
+
         // Dynamic pulsing and color cycling
         float time = (entity.tickCount + partialTick) / 20.0F;
         int colorCount = medallions.size();
@@ -58,8 +60,8 @@ public class MobColorOverlay<T extends LivingEntity, M extends EntityModel<T>> e
             blue = b1 + (b2 - b1) * progress;
         }
 
-        // Opacity pulsing: dynamic range between 32% and 52%
-        float alpha = 0.42F + (float) Math.sin((entity.tickCount + partialTick) / 3.5F) * 0.10F;
+        // Opacity pulsing: color overlay intensity increased by 20%
+        float alpha = 0.86F + (float) Math.sin((entity.tickCount + partialTick) / 3.5F) * 0.12F;
 
         ResourceLocation texture = this.getTextureLocation(entity);
         

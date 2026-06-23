@@ -29,13 +29,18 @@ public class Config {
             .comment("Whether to render glowing eyes matching the elite buff color.")
             .define("render.glowEyesEnabled", true);
 
+    public static final ForgeConfigSpec.DoubleValue MEDALLION_RENDER_DISTANCE = BUILDER
+            .comment("Maximum distance in blocks to render the medallion models above elite mob heads (in blocks). 3 chunks = 48 blocks.")
+            .defineInRange("render.medallionRenderDistance", 48.0D, 1.0D, 256.0D);
+
     public static final ForgeConfigSpec SPEC = BUILDER.build();
 
-    public static boolean enabled;
-    public static boolean medallionRenderEnabled;
-    public static double medallionSizeScale;
-    public static boolean colorOverlayEnabled;
-    public static boolean glowEyesEnabled;
+    public static boolean enabled = true;
+    public static boolean medallionRenderEnabled = true;
+    public static double medallionSizeScale = 1.0D;
+    public static boolean colorOverlayEnabled = true;
+    public static boolean glowEyesEnabled = true;
+    public static double medallionRenderDistance = 48.0D;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -44,5 +49,6 @@ public class Config {
         medallionSizeScale = MEDALLION_SIZE_SCALE.get();
         colorOverlayEnabled = COLOR_OVERLAY_ENABLED.get();
         glowEyesEnabled = GLOW_EYES_ENABLED.get();
+        medallionRenderDistance = MEDALLION_RENDER_DISTANCE.get();
     }
 }

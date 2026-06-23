@@ -8,6 +8,7 @@
     "CombatTrackerMixin"
   ],
   "client": [
+    "CreeperRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

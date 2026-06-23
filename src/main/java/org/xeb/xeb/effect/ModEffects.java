@@ -17,6 +17,8 @@ public class ModEffects {
     public static final RegistryObject<MobEffect> MANA_DRAIN = EFFECTS.register("mana_drain", ManaDrainEffect::new);
     public static final RegistryObject<MobEffect> BURN = EFFECTS.register("burn", BurnEffect::new);
     public static final RegistryObject<MobEffect> MADNESS = EFFECTS.register("madness", MadnessEffect::new);
+    public static final RegistryObject<MobEffect> ALL_STATS_DOWN = EFFECTS.register("all_stats_down", AllStatsDownEffect::new);
+    public static final RegistryObject<MobEffect> ALL_STATS_UP = EFFECTS.register("all_stats_up", AllStatsUpEffect::new);
 
     public static void register(IEventBus eventBus) {
         EFFECTS.register(eventBus);

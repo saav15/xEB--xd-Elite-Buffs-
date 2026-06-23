@@ -9,7 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class HardyBuff extends EliteBuff {
     public HardyBuff() {
-        super("hardy", "Hardy", BuffType.UNIVERSAL, 0xB8860B, 10.0D);
+        super("hardy", "Hardy", BuffType.UNIVERSAL, 0xB8860B, 10.0D, false);
     }
 
     @Override

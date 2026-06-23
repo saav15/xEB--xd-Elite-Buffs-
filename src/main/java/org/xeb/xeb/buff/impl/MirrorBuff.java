@@ -13,7 +13,7 @@ import net.minecraftforge.event.entity.ProjectileImpactEvent;
 
 public class MirrorBuff extends EliteBuff {
     public MirrorBuff() {
-        super("mirror", "Mirror", BuffType.ENEMY_ONLY, 0xC0C0C0, 1.0D);
+        super("mirror", "Mirror", BuffType.ENEMY_ONLY, 0xC0C0C0, 1.0D, false);
     }
 
     @Override

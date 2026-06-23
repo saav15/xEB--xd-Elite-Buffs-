@@ -58,22 +58,24 @@ public class MedallionManager {
 
     public static void attachMedallion(LivingEntity entity, MedallionData medallion) {
         List<MedallionData> current = getMedallions(entity);
-        // Prevent duplicate buff ids
-        for (MedallionData m : current) {
-            if (m.getBuff().getId().equals(medallion.getBuff().getId())) {
-                return;
+        // Prevent duplicate buff ids only for non-stackable buffs
+        if (!medallion.getBuff().isStackable()) {
+            for (MedallionData m : current) {
+                if (m.getBuff().getId().equals(medallion.getBuff().getId())) {
+                    return;
+                }
             }
         }
         current.add(medallion);
         saveMedallions(entity, current);
-        medallion.getBuff().onAttach(entity);
+        medallion.getBuff().onAttach(entity, medallion.getUniqueId());
         syncToTracking(entity);
     }
 
     public static void removeAllMedallions(LivingEntity entity) {
         List<MedallionData> current = getMedallions(entity);
         for (MedallionData m : current) {
-            m.getBuff().onDetach(entity);
+            m.getBuff().onDetach(entity, m.getUniqueId());
         }
         entity.getPersistentData().remove(MEDALLIONS_KEY);
         syncToTracking(entity);
@@ -167,8 +169,10 @@ public class MedallionManager {
         if (!rolled.isEmpty()) {
             saveMedallions(entity, rolled);
             for (MedallionData m : rolled) {
-                m.getBuff().onAttach(entity);
+                m.getBuff().onAttach(entity, m.getUniqueId());
             }
+            // Refresh hitbox if any Mega medallions were assigned
+            refreshDimensionsIfNeeded(entity, rolled);
             syncToTracking(entity);
         }
     }
@@ -197,9 +201,25 @@ public class MedallionManager {
         }
         saveMedallions(target, copied);
         for (MedallionData m : copied) {
-            m.getBuff().onAttach(target);
+            m.getBuff().onAttach(target, m.getUniqueId());
         }
+        // Refresh hitbox for the target entity if it has Mega medallions
+        refreshDimensionsIfNeeded(target, copied);
         syncToTracking(target);
+    }
+
+    /**
+     * Calls entity.refreshDimensions() if the given medallion list contains at least one Mega buff.
+     * This forces Minecraft to re-query getDimensions(), which our mixin intercepts to apply
+     * the correct scaled hitbox. Must be called server-side after Mega medallions are assigned.
+     */
+    public static void refreshDimensionsIfNeeded(LivingEntity entity, java.util.List<MedallionData> medallions) {
+        if (entity.level().isClientSide()) return;
+        try {
+            entity.refreshDimensions();
+        } catch (Exception ignored) {
+            // Safety guard for edge cases during entity initialization
+        }
     }
 
     public static boolean isBoss(LivingEntity entity) {

@@ -16,17 +16,22 @@ import java.util.UUID;
 
 public class ShieldedBuff extends EliteBuff {
     private static final String SHIELD_KEY = "xebShield";
+    private static final String SHIELD_COUNT_KEY = "xebShieldCount";
+    // Single health penalty UUID — the penalty is applied once and caps regardless of how many stacks
     private static final UUID HEALTH_PENALTY_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de089999");
 
     public ShieldedBuff() {
-        super("shielded", "Shielded", BuffType.UNIVERSAL, 0x4169E1, 2.0D);
+        super("shielded", "Shielded", BuffType.UNIVERSAL, 0x4169E1, 2.0D, true);
     }
 
     @Override
-    public void onAttach(LivingEntity entity) {
+    public void onAttach(LivingEntity entity) {}
+
+    @Override
+    public void onAttach(LivingEntity entity, UUID medallionId) {
         Difficulty difficulty = entity.level().getDifficulty();
         boolean isBoss = MedallionManager.isBoss(entity);
-        int shield = 5;
+        int shield;
 
         if (isBoss) {
             shield = switch (difficulty) {
@@ -44,14 +49,19 @@ public class ShieldedBuff extends EliteBuff {
             };
         }
 
-        entity.getPersistentData().putInt(SHIELD_KEY, shield);
+        CompoundTag tag = entity.getPersistentData();
+        // Stack shield points additively
+        int current = tag.contains(SHIELD_KEY) ? tag.getInt(SHIELD_KEY) : 0;
+        tag.putInt(SHIELD_KEY, current + shield);
 
-        // Max health penalty of -20%
+        // Track how many shielded buffs are active (for penalty management)
+        int count = tag.contains(SHIELD_COUNT_KEY) ? tag.getInt(SHIELD_COUNT_KEY) : 0;
+        tag.putInt(SHIELD_COUNT_KEY, count + 1);
+
+        // Health penalty only applied once regardless of stack count
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHealth != null) {
-            AttributeModifier modifier = new AttributeModifier(HEALTH_PENALTY_UUID, "Shielded Health Penalty", -0.20D, AttributeModifier.Operation.MULTIPLY_BASE);
-            maxHealth.addTransientModifier(modifier);
-            // Clamp current health
+        if (maxHealth != null && maxHealth.getModifier(HEALTH_PENALTY_UUID) == null) {
+            maxHealth.addTransientModifier(new AttributeModifier(HEALTH_PENALTY_UUID, "Shielded Health Penalty", -0.20D, AttributeModifier.Operation.MULTIPLY_BASE));
             if (entity.getHealth() > entity.getMaxHealth()) {
                 entity.setHealth(entity.getMaxHealth());
             }
@@ -59,11 +69,22 @@ public class ShieldedBuff extends EliteBuff {
     }
 
     @Override
-    public void onDetach(LivingEntity entity) {
-        entity.getPersistentData().remove(SHIELD_KEY);
-        AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
-        if (maxHealth != null) {
-            maxHealth.removeModifier(HEALTH_PENALTY_UUID);
+    public void onDetach(LivingEntity entity) {}
+
+    @Override
+    public void onDetach(LivingEntity entity, UUID medallionId) {
+        CompoundTag tag = entity.getPersistentData();
+        int count = tag.contains(SHIELD_COUNT_KEY) ? tag.getInt(SHIELD_COUNT_KEY) - 1 : 0;
+        if (count <= 0) {
+            // Last shielded buff removed — clear everything
+            tag.remove(SHIELD_KEY);
+            tag.remove(SHIELD_COUNT_KEY);
+            AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
+            if (maxHealth != null) {
+                maxHealth.removeModifier(HEALTH_PENALTY_UUID);
+            }
+        } else {
+            tag.putInt(SHIELD_COUNT_KEY, count);
         }
     }
 

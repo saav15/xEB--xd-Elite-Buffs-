@@ -16,18 +16,28 @@ import software.bernie.geckolib.cache.object.BakedGeoModel;
 
 import java.util.List;
 
-public class MobColorGeoLayer<T extends LivingEntity & GeoAnimatable> extends GeoRenderLayer<T> {
+public class MobColorGeoLayer<T extends GeoAnimatable> extends GeoRenderLayer<T> {
     public MobColorGeoLayer(GeoRenderer<T> renderer) {
         super(renderer);
     }
 
     @Override
     public void render(PoseStack poseStack, T animatable, BakedGeoModel bakedModel, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
-        List<MedallionData> medallions = MedallionManager.getMedallions(animatable);
+        LivingEntity entity = null;
+        if (animatable instanceof LivingEntity living) {
+            entity = living;
+        } else if (this.getRenderer() instanceof software.bernie.geckolib.renderer.GeoReplacedEntityRenderer<?, ?> replacedRenderer) {
+            entity = org.xeb.xeb.Xeb.getEntityFromReplacedRenderer(replacedRenderer);
+        }
+        if (entity == null) return;
+
+        List<MedallionData> medallions = MedallionManager.getMedallions(entity);
         if (medallions.isEmpty()) return;
 
+        if (!org.xeb.xeb.Config.colorOverlayEnabled) return;
+
         // Dynamic pulsing and color cycling
-        float time = (animatable.tickCount + partialTick) / 20.0F;
+        float time = (entity.tickCount + partialTick) / 20.0F;
         int colorCount = medallions.size();
         float red, green, blue;
         
@@ -59,8 +69,8 @@ public class MobColorGeoLayer<T extends LivingEntity & GeoAnimatable> extends Ge
             blue = b1 + (b2 - b1) * progress;
         }
 
-        // Opacity pulsing: dynamic range between 32% and 52%
-        float alpha = 0.42F + (float) Math.sin((animatable.tickCount + partialTick) / 3.5F) * 0.10F;
+        // Opacity pulsing: color overlay intensity increased by 20%
+        float alpha = 0.86F + (float) Math.sin((entity.tickCount + partialTick) / 3.5F) * 0.12F;
 
         ResourceLocation texture = getTextureResource(animatable);
         RenderType translucentType = RenderType.entityTranslucent(texture);
@@ -68,7 +78,7 @@ public class MobColorGeoLayer<T extends LivingEntity & GeoAnimatable> extends Ge
 
         poseStack.pushPose();
         
-        float height = animatable.getBbHeight();
+        float height = entity.getBbHeight();
         // Shift outward slightly to minimize any potential z-fighting on complex layers
         poseStack.translate(0.0D, -height / 2.0D, 0.0D);
         poseStack.scale(1.015F, 1.015F, 1.015F);

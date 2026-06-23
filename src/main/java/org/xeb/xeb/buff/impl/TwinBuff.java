@@ -17,7 +17,7 @@ public class TwinBuff extends EliteBuff {
     private static final UUID TWIN_HEALTH_UUID = UUID.fromString("fb41b716-e41c-4b68-b80c-7833de08ab50");
 
     public TwinBuff() {
-        super("twin", "Twin", BuffType.UNIVERSAL, 0x9400D3, 1.0D);
+        super("twin", "Twin", BuffType.UNIVERSAL, 0x9400D3, 1.0D, false);
     }
 
     @Override
@@ -25,7 +25,9 @@ public class TwinBuff extends EliteBuff {
         // Halve max health
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth != null) {
-            maxHealth.addTransientModifier(new AttributeModifier(TWIN_HEALTH_UUID, "Twin Health Penalty", -0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            if (maxHealth.getModifier(TWIN_HEALTH_UUID) == null) {
+                maxHealth.addTransientModifier(new AttributeModifier(TWIN_HEALTH_UUID, "Twin Health Penalty", -0.5D, AttributeModifier.Operation.MULTIPLY_BASE));
+            }
             if (entity.getHealth() > entity.getMaxHealth()) {
                 entity.setHealth(entity.getMaxHealth());
             }

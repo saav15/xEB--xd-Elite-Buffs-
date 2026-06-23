@@ -39,6 +39,9 @@ public class Xeb {
     public Xeb() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        // Register configuration
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(net.minecraftforge.fml.config.ModConfig.Type.CLIENT, Config.SPEC);
+
         // Register custom systems
         ModAttributes.register(modEventBus);
         ModEffects.register(modEventBus);
@@ -120,6 +123,27 @@ public class Xeb {
         }
     }
 
+    public static LivingEntity getEntityFromReplacedRenderer(software.bernie.geckolib.renderer.GeoReplacedEntityRenderer<?, ?> renderer) {
+        try {
+            Class<?> currentClass = renderer.getClass();
+            while (currentClass != null) {
+                for (java.lang.reflect.Field field : currentClass.getDeclaredFields()) {
+                    if (net.minecraft.world.entity.Entity.class.isAssignableFrom(field.getType())) {
+                        field.setAccessible(true);
+                        Object val = field.get(renderer);
+                        if (val instanceof LivingEntity living) {
+                            return living;
+                        }
+                    }
+                }
+                currentClass = currentClass.getSuperclass();
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return null;
+    }
+
     @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
 
@@ -135,36 +159,94 @@ public class Xeb {
                     context -> new software.bernie.geckolib.renderer.GeoEntityRenderer<>(context, new EliteFlyModel()));
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @SubscribeEvent
         public static void addLayers(EntityRenderersEvent.AddLayers event) {
+            // Track renderers we've already patched to avoid duplicates
+            java.util.Set<Object> patched = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+            // Helper lambda: patch a single LivingEntityRenderer
+            java.util.function.Consumer<EntityRenderer<?>> patchRenderer = (renderer) -> {
+                if (renderer == null || !patched.add(renderer)) return;
+                if (renderer instanceof software.bernie.geckolib.renderer.GeoRenderer geoRenderer) {
+                    try {
+                        java.lang.reflect.Method addRenderLayerMethod = null;
+                        Class<?> c = geoRenderer.getClass();
+                        while (c != null && addRenderLayerMethod == null) {
+                            for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+                                if (m.getName().equals("addRenderLayer") && m.getParameterCount() == 1) {
+                                    addRenderLayerMethod = m;
+                                    break;
+                                }
+                            }
+                            c = c.getSuperclass();
+                        }
+                        if (addRenderLayerMethod != null) {
+                            addRenderLayerMethod.setAccessible(true);
+                            addRenderLayerMethod.invoke(geoRenderer, new MedallionGeoLayer(geoRenderer));
+                            addRenderLayerMethod.invoke(geoRenderer, new MobColorGeoLayer(geoRenderer));
+                            addRenderLayerMethod.invoke(geoRenderer, new GlowEyeGeoLayer(geoRenderer));
+                        }
+                    } catch (Exception e) {
+                        LOGGER.warn("xEB: Failed to add GeckoLib layers: " + e.getMessage());
+                    }
+                } else if (renderer instanceof LivingEntityRenderer livingRenderer) {
+                    livingRenderer.addLayer(new MedallionRenderLayer<>(livingRenderer));
+                    livingRenderer.addLayer(new MobColorOverlay<>(livingRenderer));
+                    livingRenderer.addLayer(new GlowEyeOverlay<>(livingRenderer));
+                }
+            };
+
             // Add layers to player skins
             for (String skin : event.getSkins()) {
-                LivingEntityRenderer renderer = event.getSkin(skin);
-                if (renderer != null) {
-                    renderer.addLayer(new MedallionRenderLayer<>(renderer));
-                    renderer.addLayer(new MobColorOverlay<>(renderer));
-                    renderer.addLayer(new GlowEyeOverlay<>(renderer));
-                }
+                patchRenderer.accept(event.getSkin(skin));
             }
 
-            // Add layers to all registered living entity renderers
+            // Explicitly patch key vanilla mobs that may be missed by the generic loop
+            try { patchRenderer.accept(event.getRenderer(EntityType.CREEPER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.ZOMBIE)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.SKELETON)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.SPIDER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.CAVE_SPIDER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.ENDERMAN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.BLAZE)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.WITCH)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.GUARDIAN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.ELDER_GUARDIAN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.WITHER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.WARDEN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.PIGLIN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.PIGLIN_BRUTE)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.HOGLIN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.ZOMBIFIED_PIGLIN)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.DROWNED)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.HUSK)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.STRAY)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.WITHER_SKELETON)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.VINDICATOR)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.PILLAGER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.RAVAGER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.GHAST)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.MAGMA_CUBE)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.SLIME)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.SHULKER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.PHANTOM)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.EVOKER)); } catch (Exception ignored) {}
+            try { patchRenderer.accept(event.getRenderer(EntityType.ZOGLIN)); } catch (Exception ignored) {}
+
+            // Generic loop for all remaining registered living entity renderers (modded mobs)
             for (EntityType<?> type : ForgeRegistries.ENTITY_TYPES) {
                 try {
                     EntityType<? extends LivingEntity> livingType = (EntityType<? extends LivingEntity>) type;
-                    EntityRenderer<?> renderer = event.getRenderer(livingType);
-                    if (renderer instanceof LivingEntityRenderer livingRenderer) {
-                        livingRenderer.addLayer(new MedallionRenderLayer<>(livingRenderer));
-                        livingRenderer.addLayer(new MobColorOverlay<>(livingRenderer));
-                        livingRenderer.addLayer(new GlowEyeOverlay<>(livingRenderer));
+                    EntityRenderer<?> renderer = null;
+                    try {
+                        renderer = event.getRenderer(livingType);
+                    } catch (Exception e) {
+                        continue;
                     }
-                    if (renderer instanceof software.bernie.geckolib.renderer.GeoEntityRenderer geoRenderer) {
-                        geoRenderer.addRenderLayer(new MedallionGeoLayer(geoRenderer));
-                        geoRenderer.addRenderLayer(new MobColorGeoLayer(geoRenderer));
-                        geoRenderer.addRenderLayer(new GlowEyeGeoLayer(geoRenderer));
-                    }
+                    patchRenderer.accept(renderer);
                 } catch (Exception e) {
-                    // Ignore non-living entity types
+                    // Ignore non-living entity types or types without renderers
                 }
             }
         }

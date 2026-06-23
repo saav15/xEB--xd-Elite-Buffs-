@@ -112,8 +112,9 @@ public class XebCommand {
         if (!medallions.isEmpty()) {
             MedallionManager.saveMedallions(living, medallions);
             for (MedallionData m : medallions) {
-                m.getBuff().onAttach(living);
+                m.getBuff().onAttach(living, m.getUniqueId());
             }
+            MedallionManager.refreshDimensionsIfNeeded(living, medallions);
         } else {
             // Default to random medallions
             MedallionManager.assignRandomMedallions(living, level);

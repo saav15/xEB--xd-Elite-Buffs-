@@ -39,8 +39,10 @@ public class ProtectedBuff extends EliteBuff {
         // Max health penalty of -20%
         AttributeInstance maxHealth = entity.getAttribute(Attributes.MAX_HEALTH);
         if (maxHealth != null) {
-            AttributeModifier modifier = new AttributeModifier(HEALTH_PENALTY_UUID, "Protected Health Penalty", -0.20D, AttributeModifier.Operation.MULTIPLY_BASE);
-            maxHealth.addTransientModifier(modifier);
+            if (maxHealth.getModifier(HEALTH_PENALTY_UUID) == null) {
+                AttributeModifier modifier = new AttributeModifier(HEALTH_PENALTY_UUID, "Protected Health Penalty", -0.20D, AttributeModifier.Operation.MULTIPLY_BASE);
+                maxHealth.addTransientModifier(modifier);
+            }
             // Clamp current health
             if (entity.getHealth() > entity.getMaxHealth()) {
                 entity.setHealth(entity.getMaxHealth());

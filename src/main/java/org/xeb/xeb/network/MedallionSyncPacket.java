@@ -93,6 +93,9 @@ public class MedallionSyncPacket {
 
         if (entity instanceof LivingEntity living) {
             living.getPersistentData().put(MedallionManager.MEDALLIONS_KEY, listTag);
+            try {
+                living.refreshDimensions();
+            } catch (Exception ignored) {}
         } else {
             PENDING_SYNCS.put(msg.entityId, listTag);
         }

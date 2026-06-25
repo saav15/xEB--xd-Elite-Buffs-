@@ -37,10 +37,7 @@ public class BetterCombatCompatAdapter implements ModCompatAdapter {
     public WeaponClass classifyWeapon(ItemStack stack) {
         if (!loaded) return WeaponClass.NON_WEAPON;
         Optional<WeaponStyleData> style = getWeaponStyle(stack);
-        if (style.isPresent()) {
-            return style.get().isTwoHanded() ? WeaponClass.MELEE : WeaponClass.MELEE;
-        }
-        return WeaponClass.NON_WEAPON;
+        return style.isPresent() ? WeaponClass.MELEE : WeaponClass.NON_WEAPON;
     }
 
     @Override
@@ -83,6 +80,7 @@ public class BetterCombatCompatAdapter implements ModCompatAdapter {
 
             // Parse Attacks / Combo steps
             int comboLength = 1;
+            double attackSpeed = 1.6D; // fallback
             List<String> abilities = new ArrayList<>();
             try {
                 java.lang.reflect.Method attacksMethod = attributes.getClass().getMethod("attacks");
@@ -90,6 +88,20 @@ public class BetterCombatCompatAdapter implements ModCompatAdapter {
                 if (attacks != null) {
                     comboLength = attacks.length;
                     for (Object attack : attacks) {
+                        // Try to read per-attack speed (field: "speed" or method "speed()")
+                        try {
+                            java.lang.reflect.Method speedMethod = attack.getClass().getMethod("speed");
+                            double s = ((Number) speedMethod.invoke(attack)).doubleValue();
+                            if (s > 0) attackSpeed = s;
+                        } catch (Exception e1) {
+                            try {
+                                java.lang.reflect.Field speedField = attack.getClass().getField("speed");
+                                double s = speedField.getDouble(attack);
+                                if (s > 0) attackSpeed = s;
+                            } catch (Exception ignored) {}
+                        }
+
+                        // Detect special abilities from animation name
                         try {
                             java.lang.reflect.Method animMethod = attack.getClass().getMethod("animation");
                             String anim = (String) animMethod.invoke(attack);
@@ -98,13 +110,14 @@ public class BetterCombatCompatAdapter implements ModCompatAdapter {
                                 if (lower.contains("leap") || lower.contains("jump")) abilities.add("leap");
                                 if (lower.contains("thrust") || lower.contains("stab")) abilities.add("thrust");
                                 if (lower.contains("parry") || lower.contains("block")) abilities.add("parry");
+                                if (lower.contains("sweep") || lower.contains("spin") || lower.contains("whirl")) abilities.add("sweep");
                             }
                         } catch (Exception ignored) {}
                     }
                 }
             } catch (Exception ignored) {}
 
-            return Optional.of(new WeaponStyleData(attackRange, comboLength, 1.6D, abilities, twoHanded));
+            return Optional.of(new WeaponStyleData(attackRange, comboLength, attackSpeed, abilities, twoHanded));
         } catch (Exception ignored) {
             return Optional.empty();
         }

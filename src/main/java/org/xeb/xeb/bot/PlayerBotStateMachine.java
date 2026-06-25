@@ -116,7 +116,6 @@ public class PlayerBotStateMachine {
 
                 double dist = player.distanceTo(currentTarget);
                 double reach = getWeaponReach(player);
-                boolean isRanged = WeaponClassificationEngine.classify(player.getMainHandItem()) == WeaponClass.RANGED;
 
                 // Scan hotbar slots and adjust selected slot
                 boolean inMeleeRange = dist <= reach;
@@ -128,7 +127,7 @@ public class PlayerBotStateMachine {
                 if (inMeleeRange) {
                     currentState = BotState.ATTACKING_MELEE;
                     stateTicks = 0;
-                } else if (isRanged && dist <= 24.0D) {
+                } else if (dist <= 24.0D && canUseAtRange(player.getMainHandItem())) {
                     currentState = BotState.ATTACKING_RANGED;
                     stateTicks = 0;
                 }
@@ -151,8 +150,7 @@ public class PlayerBotStateMachine {
                 }
 
                 if (distMelee > reachMelee) {
-                    boolean isRangedMelee = WeaponClassificationEngine.classify(player.getMainHandItem()) == WeaponClass.RANGED;
-                    if (isRangedMelee) {
+                    if (canUseAtRange(player.getMainHandItem())) {
                         currentState = BotState.ATTACKING_RANGED;
                     } else {
                         currentState = BotState.APPROACHING;
@@ -184,7 +182,7 @@ public class PlayerBotStateMachine {
                     currentState = BotState.ATTACKING_MELEE;
                     stateTicks = 0;
                     break;
-                } else if (WeaponClassificationEngine.classify(player.getMainHandItem()) != WeaponClass.RANGED) {
+                } else if (!canUseAtRange(player.getMainHandItem())) {
                     currentState = BotState.APPROACHING;
                     stateTicks = 0;
                     break;
@@ -341,6 +339,19 @@ public class PlayerBotStateMachine {
             return;
         }
 
+        // Detect MELEE weapons that have a right-click special (modded staves, charge swords, etc.)
+        // If the weapon has a use animation but isn't classified as HYBRID, treat it like a hybrid.
+        if (wc == WeaponClass.MELEE || wc == WeaponClass.MAGIC) {
+            try {
+                net.minecraft.world.item.UseAnim useAnim = mainHand.getItem().getUseAnimation(mainHand);
+                int useDuration = mainHand.getItem().getUseDuration(mainHand);
+                if (useAnim != net.minecraft.world.item.UseAnim.NONE && useDuration > 0) {
+                    handleHybridMeleeLogic(mc, player);
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
+
         boolean isBetterCombat = isBCLoaded() && Config.enableBetterCombatIntegration;
         if (isBetterCombat) {
             var styleOpt = BetterCombatWeaponAnalyzer.getWeaponStyle(mainHand);
@@ -349,8 +360,9 @@ public class PlayerBotStateMachine {
                 SpecialAbilityHandler.executeSpecialAbilities(mc, player, currentTarget, style);
 
                 if (comboTicksRemaining <= 0) {
+                    // Signal a key press to BC — do NOT also call triggerClientAttack,
+                    // that would double-fire and break BC's animation sequencing.
                     mc.options.keyAttack.setDown(true);
-                    triggerClientAttack(mc);
                     currentComboStep = (currentComboStep + 1) % style.getComboLength();
                     double speed = style.getAttackSpeed();
                     comboTicksRemaining = (int) Math.max(5.0, (20.0 / speed));
@@ -385,7 +397,9 @@ public class PlayerBotStateMachine {
         }
 
         if (hybridChargeTicks > 0) {
-            int drawDuration = player.getMainHandItem().getItem().toString().toLowerCase().contains("incinerator") ? 45 : 20;
+            ItemStack heldStack = player.getMainHandItem();
+            int rawUse = heldStack.getItem().getUseDuration(heldStack);
+            int drawDuration = (rawUse > 0 && rawUse < 200) ? Math.max(10, rawUse) : 20;
             if (hybridChargeTicks < drawDuration) {
                 mc.options.keyUse.setDown(true);
                 hybridChargeTicks++;
@@ -422,19 +436,37 @@ public class PlayerBotStateMachine {
                 rangedDrawTicks = 1;
             }
         } else {
-            int drawDuration = mainHand.getItem().toString().toLowerCase().contains("incinerator") ? 45 : 20;
-            if (rangedDrawTicks < 0) {
-                mc.options.keyUse.setDown(false);
-                rangedDrawTicks++;
-            } else if (rangedDrawTicks < drawDuration) {
-                mc.options.keyUse.setDown(true);
-                rangedDrawTicks++;
-            } else {
-                mc.options.keyUse.setDown(false);
-                if (player.isUsingItem() && mc.gameMode != null) {
-                    mc.gameMode.releaseUsingItem(player);
+            int rawUse = mainHand.getItem().getUseDuration(mainHand);
+
+            if (rawUse <= 5) {
+                // Instant-use item (throwables, instant spells, etc.) — quick press-release (3 ticks on, 7 off)
+                if (rangedDrawTicks < 0) {
+                    mc.options.keyUse.setDown(false);
+                    rangedDrawTicks++;
+                } else if (rangedDrawTicks < 3) {
+                    mc.options.keyUse.setDown(true);
+                    rangedDrawTicks++;
+                } else {
+                    mc.options.keyUse.setDown(false);
+                    rangedDrawTicks = -7;
                 }
-                rangedDrawTicks = -5;
+            } else {
+                // Charge-and-release item (bows, staves, tridents, etc.)
+                // rawUse >= 200 (e.g. bows use 72000) means hold-until-release — default to 20 ticks
+                int drawDuration = (rawUse < 200) ? Math.max(10, rawUse) : 20;
+                if (rangedDrawTicks < 0) {
+                    mc.options.keyUse.setDown(false);
+                    rangedDrawTicks++;
+                } else if (rangedDrawTicks < drawDuration) {
+                    mc.options.keyUse.setDown(true);
+                    rangedDrawTicks++;
+                } else {
+                    mc.options.keyUse.setDown(false);
+                    if (player.isUsingItem() && mc.gameMode != null) {
+                        mc.gameMode.releaseUsingItem(player);
+                    }
+                    rangedDrawTicks = -5;
+                }
             }
         }
     }
@@ -495,6 +527,24 @@ public class PlayerBotStateMachine {
             }
         }
     }
+    /**
+     * Returns true if the weapon can be used offensively at range:
+     * RANGED, HYBRID, and MAGIC weapons qualify.
+     * MELEE weapons with a right-click use action also qualify (e.g., modded staves classified as MELEE).
+     */
+    private static boolean canUseAtRange(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        WeaponClass wc = WeaponClassificationEngine.classify(stack);
+        if (wc == WeaponClass.RANGED || wc == WeaponClass.HYBRID || wc == WeaponClass.MAGIC) return true;
+        // Also allow items that have a right-click use action regardless of class
+        try {
+            net.minecraft.world.item.UseAnim anim = stack.getItem().getUseAnimation(stack);
+            int duration = stack.getItem().getUseDuration(stack);
+            return anim != net.minecraft.world.item.UseAnim.NONE && duration > 0;
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     private static boolean isBCLoaded() {
         try {
             return net.minecraftforge.fml.ModList.get() != null &&

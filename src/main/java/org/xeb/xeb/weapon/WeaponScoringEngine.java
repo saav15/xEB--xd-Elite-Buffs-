@@ -75,7 +75,9 @@ public class WeaponScoringEngine {
         double tierBonus = 0.0;
         if (stack.getItem() instanceof TieredItem tieredItem) {
             Tier tier = tieredItem.getTier();
-            if (tier == Tiers.WOOD || tier == Tiers.GOLD) {
+            if (tier == null) {
+                tierBonus = 0.0;
+            } else if (tier == Tiers.WOOD || tier == Tiers.GOLD) {
                 tierBonus = 0.0;
             } else if (tier == Tiers.STONE) {
                 tierBonus = 1.0;

@@ -14,7 +14,10 @@ public class ClassBasedClassifier implements WeaponClassifier {
         if (item instanceof SwordItem || item instanceof AxeItem) {
             return WeaponClass.MELEE;
         }
-        if (item instanceof BowItem || item instanceof CrossbowItem || item instanceof TridentItem) {
+        if (item instanceof TridentItem) {
+            return WeaponClass.HYBRID; // melee swing AND throwable at range
+        }
+        if (item instanceof BowItem || item instanceof CrossbowItem) {
             return WeaponClass.RANGED;
         }
         if (item instanceof DiggerItem) {

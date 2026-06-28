@@ -1,0 +1,100 @@
+package org.xeb.xeb.entity;
+
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import org.xeb.xeb.compat.ModCompatManager;
+import org.xeb.xeb.effect.ModEffects;
+import org.xeb.xeb.medallion.MedallionData;
+import org.xeb.xeb.medallion.MedallionManager;
+import org.xeb.xeb.medallion.MedallionType;
+
+import java.util.List;
+
+public class DemonCoreEntity extends ItemEntity {
+    private int groundTicks = 0;
+    private boolean playedLandedSound = false;
+
+    public DemonCoreEntity(EntityType<? extends DemonCoreEntity> type, Level level) {
+        super(type, level);
+        this.setPickUpDelay(32767); // Cannot be picked up
+    }
+
+    public DemonCoreEntity(Level level, double x, double y, double z, ItemStack stack) {
+        super(ModEntities.DEMON_CORE.get(), level);
+        this.setPos(x, y, z);
+        this.setItem(stack);
+        this.setPickUpDelay(32767); // Cannot be picked up
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+
+        if (!this.level().isClientSide()) {
+            // Check if it hit the ground
+            if (this.onGround()) {
+                if (!playedLandedSound) {
+                    playedLandedSound = true;
+                    // Play anvil landing sound
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            net.minecraft.sounds.SoundEvents.ANVIL_LAND,
+                            net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.2F);
+                }
+
+                groundTicks++;
+                if (groundTicks >= 100) { // 5 seconds (100 ticks)
+                    activate();
+                }
+            } else {
+                if (playedLandedSound) {
+                    // Reset if it somehow falls again (e.g. block under it was broken)
+                    playedLandedSound = false;
+                    groundTicks = 0;
+                }
+            }
+        }
+    }
+
+    private void activate() {
+        // Wither spawn sound ONLY in this local area (not global)
+        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                net.minecraft.sounds.SoundEvents.WITHER_SPAWN,
+                net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+
+        // Apply doomed to all entities in a 3x3x3 block area centered around the entity.
+        // A 3x3x3 area is achieved by inflating the bounding box by 1.5.
+        AABB area = this.getBoundingBox().inflate(1.5D);
+        List<LivingEntity> targets = this.level().getEntitiesOfClass(LivingEntity.class, area);
+
+        for (LivingEntity target : targets) {
+            // Do not apply to pets
+            if (target instanceof OwnableEntity ownable && ownable.getOwnerUUID() != null) continue;
+            if (target instanceof TamableAnimal tamable && tamable.isTame()) continue;
+
+            // Do not apply to bosses
+            if (ModCompatManager.isBoss(target)) continue;
+
+            // Do not apply to entities with golden medallions
+            boolean hasGoldMedallion = false;
+            for (MedallionData m : MedallionManager.getMedallions(target)) {
+                if (m.getTier() == MedallionType.LEGENDARY) {
+                    hasGoldMedallion = true;
+                    break;
+                }
+            }
+            if (hasGoldMedallion) continue;
+
+            // Apply Doomed for 200 ticks (10 seconds)
+            target.addEffect(new MobEffectInstance(ModEffects.DOOMED.get(), 200, 0));
+        }
+
+        this.discard();
+    }
+}

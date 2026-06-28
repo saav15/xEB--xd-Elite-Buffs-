@@ -139,7 +139,6 @@ public class MedallionRenderLayer<T extends LivingEntity, M extends EntityModel<
         int count = medallions.size();
         float time = (entity.tickCount + partialTick);
         double bob = Math.sin(time / 10.0D) * 0.08D;
-        float rotation = (time * 4.5F) % 360.0F;
 
         // Calculate the current scale of the PoseStack to undo any parent scaling
         org.joml.Vector3f dir = new org.joml.Vector3f(0.0F, 1.0F, 0.0F);
@@ -149,6 +148,9 @@ public class MedallionRenderLayer<T extends LivingEntity, M extends EntityModel<
 
         // Base medallion scale in world coordinates
         float entityWidth = entity.getBbWidth();
+        float speedMultiplier = 1.0F / (float) Math.max(0.5D, Math.sqrt(entityWidth / 0.6F));
+        float rotationSpeed = 4.5F * speedMultiplier;
+        float rotation = (time * rotationSpeed) % 360.0F;
         float targetWorldScale = 0.2F + 0.8F * entityWidth;
         targetWorldScale = Math.max(0.25F, Math.min(2.5F, targetWorldScale)) * 0.80F;
 
@@ -230,8 +232,8 @@ public class MedallionRenderLayer<T extends LivingEntity, M extends EntityModel<
             float alpha = 0.5F * (1.0F - (float) Math.abs(beamX) / 7.0F); // Fade out near the edges
             
             // Draw diagonal highlight band on front (Z = -0.52) and back (Z = 0.52)
-            drawShineBand(pose, whiteConsumer, beamX, -4.0F, 4.0F, -0.52F, alpha, packedLight, false);
-            drawShineBand(pose, whiteConsumer, beamX, -4.0F, 4.0F, 0.52F, alpha, packedLight, true);
+            drawShineBand(pose, whiteConsumer, beamX, -0.52F, alpha, packedLight, false);
+            drawShineBand(pose, whiteConsumer, beamX, 0.52F, alpha, packedLight, true);
         }
 
         // B. Sparkle Flash (progress 0.45 to 0.65)
@@ -264,24 +266,43 @@ public class MedallionRenderLayer<T extends LivingEntity, M extends EntityModel<
         }
     }
 
-    private static void drawShineBand(PoseStack.Pose pose, VertexConsumer consumer, float beamX, float minY, float maxY, float z, float alpha, int packedLight, boolean isBack) {
+    private static void drawShineBand(PoseStack.Pose pose, VertexConsumer consumer, float beamX, float z, float alpha, int packedLight, boolean isBack) {
         float normalZ = isBack ? 1.0F : -1.0F;
         float width = 0.8F;
-        
-        float xTopL = beamX - width - 0.4F;
-        float xTopR = beamX + width - 0.4F;
-        float xBotL = beamX - width + 0.4F;
-        float xBotR = beamX + width + 0.4F;
 
-        xTopL = Math.max(-4.0F, Math.min(4.0F, xTopL));
-        xTopR = Math.max(-4.0F, Math.min(4.0F, xTopR));
-        xBotL = Math.max(-4.0F, Math.min(4.0F, xBotL));
-        xBotR = Math.max(-4.0F, Math.min(4.0F, xBotR));
+        // Split into 2 quads to clip to diamond shape (limitX = 4.0F - |y|)
+        float y1 = -4.0F;
+        float y2 = 0.0F;
+        float y3 = 4.0F;
 
-        consumer.vertex(pose.pose(), xTopL, minY, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 0.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
-        consumer.vertex(pose.pose(), xTopR, minY, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 0.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
-        consumer.vertex(pose.pose(), xBotR, maxY, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 1.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
-        consumer.vertex(pose.pose(), xBotL, maxY, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 1.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        float limit1 = 0.0F;
+        float limit2 = 4.0F;
+        float limit3 = 0.0F;
+
+        float cx1 = beamX - 0.4F;
+        float cx2 = beamX;
+        float cx3 = beamX + 0.4F;
+
+        float l1 = Math.max(-limit1, Math.min(limit1, cx1 - width));
+        float r1 = Math.max(-limit1, Math.min(limit1, cx1 + width));
+
+        float l2 = Math.max(-limit2, Math.min(limit2, cx2 - width));
+        float r2 = Math.max(-limit2, Math.min(limit2, cx2 + width));
+
+        float l3 = Math.max(-limit3, Math.min(limit3, cx3 - width));
+        float r3 = Math.max(-limit3, Math.min(limit3, cx3 + width));
+
+        // Quad 1: y1 to y2
+        consumer.vertex(pose.pose(), l1, y1, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 0.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), r1, y1, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 0.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), r2, y2, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 0.5F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), l2, y2, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 0.5F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+
+        // Quad 2: y2 to y3
+        consumer.vertex(pose.pose(), l2, y2, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 0.5F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), r2, y2, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 0.5F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), r3, y3, z).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 1.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
+        consumer.vertex(pose.pose(), l3, y3, z).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 1.0F).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(packedLight).normal(pose.normal(), 0.0F, 0.0F, normalZ).endVertex();
     }
 
     private static void drawQuad(PoseStack.Pose pose, VertexConsumer consumer, float minX, float maxX, float minY, float maxY, float z, float minU, float maxU, float minV, float maxV, int packedLight, float r, float g, float b, float a, boolean isBack) {

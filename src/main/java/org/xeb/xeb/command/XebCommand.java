@@ -28,46 +28,50 @@ import java.util.UUID;
 
 public class XebCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // Build Brigadier chain from end (16) to beginning (1)
-        ArgumentBuilder<CommandSourceStack, ?> current = null;
-        for (int i = 16; i >= 1; i--) {
-            final int argIndex = i;
-            var nextNode = Commands.argument("buff" + i, StringArgumentType.word())
-                .suggests((ctx, builder) -> {
-                    for (EliteBuff buff : EliteBuffRegistry.getAll()) {
-                        builder.suggest(buff.getId());
-                    }
-                    return builder.buildFuture();
-                })
-                .executes(ctx -> executeSpawn(ctx, argIndex));
-            
-            if (current != null) {
-                nextNode.then(current);
-            }
-            current = nextNode;
-        }
-
-        var entityNode = Commands.argument("entity", ResourceLocationArgument.id())
-            .suggests((ctx, builder) -> {
-                for (ResourceLocation key : ForgeRegistries.ENTITY_TYPES.getKeys()) {
-                    builder.suggest(key.toString());
-                }
-                return builder.buildFuture();
-            })
-            .executes(ctx -> executeSpawn(ctx, 0));
-        
-        if (current != null) {
-            entityNode.then(current);
-        }
-
         dispatcher.register(
             Commands.literal("xeb")
                 .requires(source -> source.hasPermission(2)) // Require OP permission level 2 (same as summon)
-                .then(entityNode)
+                .then(
+                    Commands.argument("entity", ResourceLocationArgument.id())
+                        .suggests((ctx, builder) -> {
+                            for (ResourceLocation key : ForgeRegistries.ENTITY_TYPES.getKeys()) {
+                                builder.suggest(key.toString());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(ctx -> executeSpawn(ctx, ""))
+                        .then(
+                            Commands.argument("medallions", StringArgumentType.greedyString())
+                                .suggests((ctx, builder) -> {
+                                    String input = builder.getRemaining();
+                                    int lastSpace = input.lastIndexOf(' ');
+                                    String prefix = lastSpace == -1 ? "" : input.substring(0, lastSpace + 1);
+                                    String lastWord = lastSpace == -1 ? input : input.substring(lastSpace + 1);
+
+                                    for (EliteBuff buff : EliteBuffRegistry.getAll()) {
+                                        String bSuggest = "b," + buff.getId();
+                                        String sSuggest = "s," + buff.getId();
+                                        String gSuggest = "g," + buff.getId();
+
+                                        if (bSuggest.startsWith(lastWord)) {
+                                            builder.suggest(prefix + bSuggest);
+                                        }
+                                        if (sSuggest.startsWith(lastWord)) {
+                                            builder.suggest(prefix + sSuggest);
+                                        }
+                                        if (gSuggest.startsWith(lastWord)) {
+                                            builder.suggest(prefix + gSuggest);
+                                        }
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(ctx -> executeSpawn(ctx, StringArgumentType.getString(ctx, "medallions")))
+                        )
+                )
         );
     }
 
-    private static int executeSpawn(CommandContext<CommandSourceStack> ctx, int buffCount) throws CommandSyntaxException {
+    private static int executeSpawn(CommandContext<CommandSourceStack> ctx, String medallionsStr) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         ResourceLocation entityId = ResourceLocationArgument.getId(ctx, "entity");
         
@@ -88,24 +92,33 @@ public class XebCommand {
 
         living.moveTo(pos.x, pos.y, pos.z, source.getRotation().y, 0.0F);
 
-        List<String> buffIds = new ArrayList<>();
-        for (int i = 1; i <= buffCount; i++) {
-            try {
-                String buffId = StringArgumentType.getString(ctx, "buff" + i);
-                if (buffId != null && !buffId.isEmpty()) {
-                    buffIds.add(buffId);
-                }
-            } catch (IllegalArgumentException e) {
-                // Ignore missing node
-            }
-        }
-
         List<MedallionData> medallions = new ArrayList<>();
-        for (String buffId : buffIds) {
-            EliteBuff buff = EliteBuffRegistry.getById(buffId);
-            if (buff != null) {
-                // Manual spawn uses LEGENDARY (Gold) for customization testing
-                medallions.add(new MedallionData(buff, MedallionType.LEGENDARY, UUID.randomUUID()));
+        if (medallionsStr != null && !medallionsStr.trim().isEmpty()) {
+            String[] tokens = medallionsStr.trim().split("\\s+");
+            for (String token : tokens) {
+                MedallionType tier = MedallionType.LEGENDARY; // default to gold
+                String buffId = token;
+
+                if (token.contains(",")) {
+                    String[] parts = token.split(",", 2);
+                    if (parts.length == 2) {
+                        String prefix = parts[0];
+                        String rest = parts[1];
+                        if ((prefix.equals("b") || prefix.equals("s") || prefix.equals("g")) && EliteBuffRegistry.getById(rest) != null) {
+                            buffId = rest;
+                            tier = switch (prefix) {
+                                case "b" -> MedallionType.COMMON;
+                                case "s" -> MedallionType.RARE;
+                                default -> MedallionType.LEGENDARY;
+                            };
+                        }
+                    }
+                }
+
+                EliteBuff buff = EliteBuffRegistry.getById(buffId);
+                if (buff != null) {
+                    medallions.add(new MedallionData(buff, tier, UUID.randomUUID()));
+                }
             }
         }
 

@@ -85,7 +85,9 @@ public class ProtectedBuff extends EliteBuff {
 
     @Override
     public void onDamageTaken(LivingEntity entity, LivingHurtEvent event) {
-        if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD) || event.getAmount() >= 1000.0F) {
+        if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
+                || event.getAmount() >= 1000.0F
+                || entity.getPersistentData().getBoolean("xebDelayedPainTriggering")) {
             return;
         }
         CompoundTag tag = entity.getPersistentData();

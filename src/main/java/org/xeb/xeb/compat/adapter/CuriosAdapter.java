@@ -66,21 +66,24 @@ public class CuriosAdapter implements ModCompatAdapter {
                 Method getCuriosHandler = helper.getClass().getMethod("getCuriosHandler", LivingEntity.class);
                 Object lazyOpt = getCuriosHandler.invoke(helper, entity);
                 if (lazyOpt != null) {
-                    Method isPresent = lazyOpt.getClass().getMethod("isPresent");
-                    if ((Boolean) isPresent.invoke(lazyOpt)) {
-                        Method get = lazyOpt.getClass().getMethod("orElseThrow");
-                        Object handlerObj = get.invoke(lazyOpt);
-                        if (handlerObj != null) {
-                            Method getEquippedItems = handlerObj.getClass().getMethod("getEquippedItems");
-                            Object itemHandler = getEquippedItems.invoke(handlerObj);
-                            if (itemHandler != null) {
-                                Method getSlots = itemHandler.getClass().getMethod("getSlots");
-                                int slots = (Integer) getSlots.invoke(itemHandler);
-                                Method getStackInSlot = itemHandler.getClass().getMethod("getStackInSlot", int.class);
-                                for (int i = 0; i < slots; i++) {
-                                    ItemStack itemStack = (ItemStack) getStackInSlot.invoke(itemHandler, i);
-                                    if (itemStack != null && !itemStack.isEmpty()) {
-                                        list.add(itemStack);
+                    Method orElse = lazyOpt.getClass().getMethod("orElse", Object.class);
+                    Object handlerObj = orElse.invoke(lazyOpt, (Object) null);
+                    if (handlerObj != null) {
+                        Method getCurios = handlerObj.getClass().getMethod("getCurios");
+                        java.util.Map<String, Object> curiosMap = (java.util.Map<String, Object>) getCurios.invoke(handlerObj);
+                        if (curiosMap != null) {
+                            for (Object stacksHandler : curiosMap.values()) {
+                                Method getStacks = stacksHandler.getClass().getMethod("getStacks");
+                                Object stacksObj = getStacks.invoke(stacksHandler);
+                                if (stacksObj != null) {
+                                    Method getSlots = stacksObj.getClass().getMethod("getSlots");
+                                    int slotsCount = (Integer) getSlots.invoke(stacksObj);
+                                    Method getStackInSlot = stacksObj.getClass().getMethod("getStackInSlot", int.class);
+                                    for (int i = 0; i < slotsCount; i++) {
+                                        ItemStack itemStack = (ItemStack) getStackInSlot.invoke(stacksObj, i);
+                                        if (itemStack != null && !itemStack.isEmpty()) {
+                                            list.add(itemStack);
+                                        }
                                     }
                                 }
                             }

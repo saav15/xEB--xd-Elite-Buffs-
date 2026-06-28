@@ -108,6 +108,26 @@ public class Config {
             .comment("Extra blocks added to weapon reach for the melee/ranged decision buffer zone.")
             .defineInRange("combat.meleeRangeBufferBlocks", 1.5, 0.0, 5.0);
 
+    // Right-Click Special Abilities Group (for modded weapons like Cataclysm, etc.)
+    public static final ForgeConfigSpec.ConfigValue<String> RIGHT_CLICK_MODE = BUILDER
+            .comment("How Madness triggers right-click specials on modded weapons.",
+                    "PERIODIC = use on a fixed cooldown timer.",
+                    "TACTICAL = use only when tactically advantageous (target low HP, multi-target, player hurt).",
+                    "DISABLED = never use right-click specials.")
+            .define("betterCombat.rightClickMode", "TACTICAL");
+
+    public static final ForgeConfigSpec.IntValue RIGHT_CLICK_PERIODIC_COOLDOWN_TICKS = BUILDER
+            .comment("Cooldown (in ticks) between right-click special uses in PERIODIC mode. 100 ticks = 5 seconds.")
+            .defineInRange("betterCombat.rightClickPeriodicCooldownTicks", 100, 20, 600);
+
+    public static final ForgeConfigSpec.DoubleValue RIGHT_CLICK_TACTICAL_LOW_HP_THRESHOLD = BUILDER
+            .comment("Target HP percentage below which TACTICAL mode will fire a right-click special (finisher).")
+            .defineInRange("betterCombat.rightClickTacticalLowHpThreshold", 0.4, 0.0, 1.0);
+
+    public static final ForgeConfigSpec.DoubleValue TACTICAL_MULTI_TARGET_RADIUS = BUILDER
+            .comment("Radius in blocks to scan for additional enemies. If >= 2 are nearby, TACTICAL mode fires.")
+            .defineInRange("betterCombat.tacticalMultiTargetRadius", 4.0, 1.0, 8.0);
+
     public static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static boolean enabled = true;
@@ -139,6 +159,12 @@ public class Config {
     public static double emergencySwitchScoreThreshold = 20.0;
     public static double meleeRangeBufferBlocks = 1.5;
 
+    // Right-click special ability config
+    public static String rightClickMode = "TACTICAL";
+    public static int rightClickPeriodicCooldownTicks = 100;
+    public static double rightClickTacticalLowHpThreshold = 0.4;
+    public static double tacticalMultiTargetRadius = 4.0;
+
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
         enabled = ENABLED.get();
@@ -169,5 +195,11 @@ public class Config {
         autoTriggerThrust = AUTO_TRIGGER_THRUST.get();
         emergencySwitchScoreThreshold = EMERGENCY_SWITCH_SCORE_THRESHOLD.get();
         meleeRangeBufferBlocks = MELEE_RANGE_BUFFER_BLOCKS.get();
+
+        // Load right-click special ability config
+        rightClickMode = RIGHT_CLICK_MODE.get();
+        rightClickPeriodicCooldownTicks = RIGHT_CLICK_PERIODIC_COOLDOWN_TICKS.get();
+        rightClickTacticalLowHpThreshold = RIGHT_CLICK_TACTICAL_LOW_HP_THRESHOLD.get();
+        tacticalMultiTargetRadius = TACTICAL_MULTI_TARGET_RADIUS.get();
     }
 }

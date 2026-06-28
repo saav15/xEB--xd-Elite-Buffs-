@@ -4,11 +4,13 @@ import org.xeb.xeb.buff.BuffType;
 import org.xeb.xeb.buff.EliteBuff;
 import org.xeb.xeb.network.BuffParticlePacket;
 import org.xeb.xeb.network.XEBNetwork;
+import org.xeb.xeb.util.DodgeHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -64,16 +66,22 @@ public class LuckyBuff extends EliteBuff {
 
     @Override
     public void onDamageTaken(LivingEntity entity, LivingHurtEvent event) {
-        if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD) || event.getAmount() >= 1000.0F) {
+        // Skip void / instakill damage
+        if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
+                || event.getAmount() >= 1000.0F) {
             return;
         }
+        // 10% flat dodge chance — cancels damage AND all secondary effects
         if (entity.getRandom().nextFloat() < 0.10F) {
-            event.setAmount(0.0F);
-            event.setCanceled(true);
-            if (!entity.level().isClientSide()) {
-                BuffParticlePacket packet = new BuffParticlePacket(entity.getX(), entity.getY(), entity.getZ(), "dodge", 8);
-                XEBNetwork.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity), packet);
-            }
+            DodgeHelper.triggerDodge(entity, event);
+        }
+    }
+
+    @Override
+    public void onProjectileImpact(LivingEntity entity, ProjectileImpactEvent event) {
+        // Same 10% dodge applies to projectiles — cancels the impact entirely
+        if (entity.getRandom().nextFloat() < 0.10F) {
+            DodgeHelper.triggerDodge(entity, event);
         }
     }
 }

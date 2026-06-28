@@ -18,5 +18,9 @@ public class XEBNetwork {
         int id = 0;
         CHANNEL.registerMessage(id++, MedallionSyncPacket.class, MedallionSyncPacket::encode, MedallionSyncPacket::decode, MedallionSyncPacket::handle);
         CHANNEL.registerMessage(id++, BuffParticlePacket.class, BuffParticlePacket::encode, BuffParticlePacket::decode, BuffParticlePacket::handle);
+        CHANNEL.registerMessage(id++, AirSwingPacket.class, AirSwingPacket::encode, AirSwingPacket::decode, AirSwingPacket::handle);
+        CHANNEL.registerMessage(id++, DoomfistDashPacket.class, DoomfistDashPacket::encode, DoomfistDashPacket::decode, DoomfistDashPacket::handle);
+        CHANNEL.registerMessage(id++, ActuarKeyPacket.class, ActuarKeyPacket::encode, ActuarKeyPacket::decode, ActuarKeyPacket::handle);
+        CHANNEL.registerMessage(id++, DoomfistAbilitySyncPacket.class, DoomfistAbilitySyncPacket::encode, DoomfistAbilitySyncPacket::decode, DoomfistAbilitySyncPacket::handle);
     }
 }

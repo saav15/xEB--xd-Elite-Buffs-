@@ -14,6 +14,13 @@ import java.util.UUID;
 
 public class DeathMessageHelper {
     public static Component modifyDeathMessage(Component original, LivingEntity victim) {
+        if (victim.hasEffect(org.xeb.xeb.effect.ModEffects.DELAYED_PAIN.get()) ||
+            victim.getPersistentData().getBoolean("xebDelayedPainDied")) {
+            // Clear the temporary flag
+            victim.getPersistentData().remove("xebDelayedPainDied");
+            return Component.translatable("death.attack.xeb.delayed_pain", original);
+        }
+
         LivingEntity killer = victim.getKillCredit();
         if (killer == null) return original;
 

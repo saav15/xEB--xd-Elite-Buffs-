@@ -2,52 +2,56 @@ package org.xeb.xeb.buff.impl;
 
 import org.xeb.xeb.buff.BuffType;
 import org.xeb.xeb.buff.EliteBuff;
+import org.xeb.xeb.effect.ModEffects;
+import org.xeb.xeb.medallion.MedallionData;
+import org.xeb.xeb.medallion.MedallionManager;
+import org.xeb.xeb.medallion.MedallionType;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.ProjectileImpactEvent;
 
 public class MirrorBuff extends EliteBuff {
     public MirrorBuff() {
         super("mirror", "Mirror", BuffType.ENEMY_ONLY, 0xC0C0C0, 1.0D, false);
     }
 
-    @Override
-    public void onAttach(LivingEntity entity) {}
-
-    @Override
-    public void onDetach(LivingEntity entity) {}
-
-    @Override
-    public void onServerTick(LivingEntity entity, ServerLevel level) {}
-
-    @Override
-    public void onProjectileImpact(LivingEntity entity, ProjectileImpactEvent event) {
-        HitResult hit = event.getRayTraceResult();
-        if (hit.getType() == HitResult.Type.ENTITY) {
-            EntityHitResult entityHit = (EntityHitResult) hit;
-            if (entityHit.getEntity() == entity) {
-                Projectile proj = event.getProjectile();
-                
-                // Reflect velocity
-                Vec3 vel = proj.getDeltaMovement();
-                proj.setDeltaMovement(vel.scale(-1.2D));
-                proj.hurtMarked = true;
-                
-                // Swap owner to current entity so it doesn't hurt us again
-                Entity originalOwner = proj.getOwner();
-                proj.setOwner(entity);
-                
-                // Deal 2 damage to mirroring entity
-                entity.hurt(entity.damageSources().magic(), 2.0F);
-                
-                // Cancel collision
-                event.setCanceled(true);
+    private int getReflectAmplifier(LivingEntity entity) {
+        MedallionType tier = MedallionType.COMMON;
+        for (MedallionData m : MedallionManager.getMedallions(entity)) {
+            if (m.getBuff().getId().equals(this.getId())) {
+                tier = m.getTier();
+                break;
             }
+        }
+        return switch (tier) {
+            case COMMON -> 1;     // Reflect II (amplifier = 1)
+            case RARE -> 3;       // Reflect IV (amplifier = 3)
+            case LEGENDARY -> 5;  // Reflect VI (amplifier = 5)
+        };
+    }
+
+    @Override
+    public void onAttach(LivingEntity entity) {
+        if (!entity.level().isClientSide()) {
+            int amp = getReflectAmplifier(entity);
+            entity.addEffect(new MobEffectInstance(ModEffects.REFLECT.get(), -1, amp, false, false, true));
+        }
+    }
+
+    @Override
+    public void onDetach(LivingEntity entity) {
+        if (!entity.level().isClientSide()) {
+            entity.removeEffect(ModEffects.REFLECT.get());
+        }
+    }
+
+    @Override
+    public void onServerTick(LivingEntity entity, ServerLevel level) {
+        // Refresh effect if missing or has the wrong amplifier
+        int expectedAmp = getReflectAmplifier(entity);
+        MobEffectInstance current = entity.getEffect(ModEffects.REFLECT.get());
+        if (current == null || current.getAmplifier() != expectedAmp) {
+            entity.addEffect(new MobEffectInstance(ModEffects.REFLECT.get(), -1, expectedAmp, false, false, true));
         }
     }
 }

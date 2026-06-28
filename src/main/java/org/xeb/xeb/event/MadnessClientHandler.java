@@ -81,6 +81,20 @@ public class MadnessClientHandler {
         com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
     }
 
+    @SubscribeEvent
+    public static void onComputeFovModifier(net.minecraftforge.client.event.ComputeFovModifierEvent event) {
+        Player player = event.getPlayer();
+        if (player == null) return;
+        if (player.isUsingItem() && player.getUseItem().is(org.xeb.xeb.item.ModItems.DOOMFIST.get())) {
+            int ticksCharged = player.getTicksUsingItem();
+            float chargeRatio = Math.min(50.0F, ticksCharged) / 50.0F;
+            if (chargeRatio > 0.0F) {
+                // Enlarge FOV (zoom out effect) by up to 25% based on charge ratio
+                event.setNewFovModifier(event.getNewFovModifier() + (chargeRatio * 0.25F));
+            }
+        }
+    }
+
     private static void reset() {
         wasActive = false;
         PlayerBotStateMachine.reset();

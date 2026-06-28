@@ -25,6 +25,22 @@ public class ModEntities {
                     .build("sparkle")
     );
 
+    public static final RegistryObject<EntityType<HotPotatoProjectileEntity>> HOT_POTATO_PROJECTILE = ENTITY_TYPES.register("hot_potato_projectile",
+            () -> EntityType.Builder.<HotPotatoProjectileEntity>of(HotPotatoProjectileEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F)
+                    .clientTrackingRange(4)
+                    .updateInterval(10)
+                    .build("hot_potato_projectile")
+    );
+
+    public static final RegistryObject<EntityType<DemonCoreEntity>> DEMON_CORE = ENTITY_TYPES.register("demon_core",
+            () -> EntityType.Builder.<DemonCoreEntity>of(DemonCoreEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F)
+                    .clientTrackingRange(4)
+                    .updateInterval(10)
+                    .build("demon_core")
+    );
+
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);
     }

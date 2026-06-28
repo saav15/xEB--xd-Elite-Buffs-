@@ -50,6 +50,73 @@ public class ModCompatManager {
         return org.xeb.xeb.boss.UniversalBossDetector.isBoss(entity);
     }
 
+    public static boolean hasCurioOrOffhand(LivingEntity entity, net.minecraft.world.item.Item item) {
+        if (entity == null) return false;
+        if (entity.getOffhandItem().is(item)) {
+            return true;
+        }
+        for (ModCompatAdapter adapter : ADAPTERS) {
+            if (adapter instanceof org.xeb.xeb.compat.adapter.CuriosAdapter curiosAdapter) {
+                if (curiosAdapter.isLoaded()) {
+                    for (net.minecraft.world.item.ItemStack stack : curiosAdapter.getCuriosItems(entity)) {
+                        if (stack.is(item)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasHelmetOrCurio(LivingEntity entity, net.minecraft.world.item.Item item) {
+        if (entity == null) return false;
+        if (entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).is(item)) {
+            return true;
+        }
+        for (ModCompatAdapter adapter : ADAPTERS) {
+            if (adapter instanceof org.xeb.xeb.compat.adapter.CuriosAdapter curiosAdapter) {
+                if (curiosAdapter.isLoaded()) {
+                    for (net.minecraft.world.item.ItemStack stack : curiosAdapter.getCuriosItems(entity)) {
+                        if (stack.is(item)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasHotPotato(LivingEntity entity) {
+        if (entity == null) return false;
+        for (ModCompatAdapter adapter : ADAPTERS) {
+            if (adapter instanceof org.xeb.xeb.compat.adapter.CuriosAdapter curiosAdapter) {
+                if (curiosAdapter.isLoaded()) {
+                    for (net.minecraft.world.item.ItemStack stack : curiosAdapter.getCuriosItems(entity)) {
+                        if (!stack.isEmpty() && stack.is(org.xeb.xeb.item.ModItems.HOT_POTATO.get())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            if (entity.getItemBySlot(slot).is(org.xeb.xeb.item.ModItems.HOT_POTATO.get())) {
+                return true;
+            }
+        }
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(i);
+                if (!stack.isEmpty() && stack.is(org.xeb.xeb.item.ModItems.HOT_POTATO.get())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static boolean isBossLegacy(LivingEntity entity) {
         if (entity == null) return false;
         EntityType<?> type = entity.getType();

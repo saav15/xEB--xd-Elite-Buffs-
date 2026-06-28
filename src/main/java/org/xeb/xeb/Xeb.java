@@ -46,6 +46,8 @@ public class Xeb {
         ModAttributes.register(modEventBus);
         ModEffects.register(modEventBus);
         ModEntities.register(modEventBus);
+        org.xeb.xeb.item.ModItems.register(modEventBus);
+        org.xeb.xeb.item.ModCreativeModeTabs.register(modEventBus);
 
         // Register lifecycle listeners
         modEventBus.addListener(this::commonSetup);
@@ -153,24 +155,33 @@ public class Xeb {
         }
 
         @SubscribeEvent
+        public static void registerKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
+            event.register(org.xeb.xeb.client.ModKeyMappings.ACTUAR_1_KEY);
+            event.register(org.xeb.xeb.client.ModKeyMappings.ACTUAR_2_KEY);
+        }
+
+        @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             // Register client entity renderer for EliteFly using software.bernie.geckolib.renderer.GeoEntityRenderer
             event.registerEntityRenderer(ModEntities.ELITE_FLY.get(),
-                    context -> new software.bernie.geckolib.renderer.GeoEntityRenderer<>(context, new EliteFlyModel()));
-            // Register client entity renderer for Sparkle using NoopRenderer
+                    org.xeb.xeb.render.EliteFlyRenderer::new);
+            // Sparkle arrowhead renderer with trail
             event.registerEntityRenderer(ModEntities.SPARKLE.get(),
-                    net.minecraft.client.renderer.entity.NoopRenderer::new);
+                    org.xeb.xeb.render.SparkleRenderer::new);
+            event.registerEntityRenderer(ModEntities.HOT_POTATO_PROJECTILE.get(),
+                    net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+            event.registerEntityRenderer(ModEntities.DEMON_CORE.get(),
+                    net.minecraft.client.renderer.entity.ItemEntityRenderer::new);
         }
+
+        private static final java.util.Set<Object> patchedRenderers = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         @SubscribeEvent
         public static void addLayers(EntityRenderersEvent.AddLayers event) {
-            // Track renderers we've already patched to avoid duplicates
-            java.util.Set<Object> patched = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-
             // Helper lambda: patch a single LivingEntityRenderer
             java.util.function.Consumer<EntityRenderer<?>> patchRenderer = (renderer) -> {
-                if (renderer == null || !patched.add(renderer)) return;
+                if (renderer == null || !patchedRenderers.add(renderer)) return;
                 if (renderer instanceof software.bernie.geckolib.renderer.GeoRenderer geoRenderer) {
                     try {
                         java.lang.reflect.Method addRenderLayerMethod = null;
@@ -197,6 +208,7 @@ public class Xeb {
                     livingRenderer.addLayer(new MedallionRenderLayer<>(livingRenderer));
                     livingRenderer.addLayer(new MobColorOverlay<>(livingRenderer));
                     livingRenderer.addLayer(new GlowEyeOverlay<>(livingRenderer));
+                    livingRenderer.addLayer(new org.xeb.xeb.render.DoomfistRenderLayer<>(livingRenderer));
                 }
             };
 

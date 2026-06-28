@@ -11,11 +11,8 @@ import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 
 public class MedallionGeoLayer<T extends GeoAnimatable> extends GeoRenderLayer<T> {
-    private final MedallionRenderLayer<LivingEntity, ?> standardLayer;
-
     public MedallionGeoLayer(GeoRenderer<T> renderer) {
         super(renderer);
-        this.standardLayer = new MedallionRenderLayer<>(null);
     }
 
     @Override
@@ -28,6 +25,18 @@ public class MedallionGeoLayer<T extends GeoAnimatable> extends GeoRenderLayer<T
         }
         if (entity == null) return;
 
-        standardLayer.render(poseStack, bufferSource, packedLight, entity, 0.0F, 0.0F, partialTick, entity.tickCount + partialTick, 0.0F, 0.0F);
+        // Calculate the current scale of the PoseStack to undo any parent scaling
+        org.joml.Vector3f dir = new org.joml.Vector3f(0.0F, 1.0F, 0.0F);
+        poseStack.last().pose().transformDirection(dir);
+        float scale = dir.length();
+        if (scale < 0.001F) scale = 1.0F;
+
+        float worldHeight = MedallionRenderLayer.getMedallionWorldHeight(entity);
+        float heightOffset = worldHeight / scale;
+
+        poseStack.pushPose();
+        poseStack.translate(0.0F, -heightOffset, 0.0F);
+        MedallionRenderLayer.renderMedallionsStatic(poseStack, bufferSource, packedLight, entity, partialTick);
+        poseStack.popPose();
     }
 }

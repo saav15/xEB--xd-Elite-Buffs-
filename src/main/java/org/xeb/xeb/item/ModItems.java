@@ -1,0 +1,37 @@
+package org.xeb.xeb.item;
+
+import org.xeb.xeb.Xeb;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public class ModItems {
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, Xeb.MODID);
+
+    public static final RegistryObject<Item> BRASS_KNUCKLES = ITEMS.register("brass_knuckles",
+            () -> new BrassKnucklesItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> MOB_ENERGY = ITEMS.register("mob_energy",
+            () -> new MobEnergyItem(new Item.Properties().stacksTo(1).durability(2).craftRemainder(net.minecraft.world.item.Items.GLASS_BOTTLE)));
+
+    public static final RegistryObject<Item> TINFOIL_HAT = ITEMS.register("tinfoil_hat",
+            () -> new TinfoilHatItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> DEMON_CORE = ITEMS.register("demon_core",
+            () -> new DemonCoreItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> HOT_POTATO = ITEMS.register("hot_potato",
+            () -> new HotPotatoItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> HOLY_MANTLE = ITEMS.register("holy_mantle",
+            () -> new HolyMantleItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> DOOMFIST = ITEMS.register("doomfist",
+            () -> new DoomfistItem(new Item.Properties().stacksTo(1)));
+
+    public static void register(IEventBus eventBus) {
+        ITEMS.register(eventBus);
+    }
+}

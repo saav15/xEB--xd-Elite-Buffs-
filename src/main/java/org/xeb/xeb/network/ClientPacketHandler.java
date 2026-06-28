@@ -74,17 +74,107 @@ public class ClientPacketHandler {
                 
                 switch (msg.getParticleName()) {
                     case "sonic_boom" -> mc.level.addParticle(ParticleTypes.SONIC_BOOM, msg.getX(), msg.getY() + 1.0, msg.getZ(), 0, 0, 0);
-                    case "flame" -> mc.level.addParticle(ParticleTypes.FLAME, msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0.05, 0);
-                    case "creepy" -> mc.level.addParticle(ParticleTypes.HAPPY_VILLAGER, msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0.02, 0);
-                    case "dodge" -> mc.level.addParticle(ParticleTypes.POOF, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
-                    case "crit" -> mc.level.addParticle(ParticleTypes.CRIT, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.1, 0);
-                    case "revival" -> mc.level.addParticle(ParticleTypes.TOTEM_OF_UNDYING, msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, 0.2, 0);
+                    case "flame"   -> mc.level.addParticle(ParticleTypes.FLAME, msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0.05, 0);
+                    case "creepy"  -> mc.level.addParticle(ParticleTypes.HAPPY_VILLAGER, msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0.02, 0);
+                    case "dodge"   -> mc.level.addParticle(ParticleTypes.POOF, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
+                    case "crit"    -> mc.level.addParticle(ParticleTypes.CRIT, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.1, 0);
+                    case "revival" -> {
+                        if (mc.level.random.nextBoolean()) {
+                            mc.level.addParticle(ParticleTypes.END_ROD, msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, 0.05, 0);
+                        } else {
+                            mc.level.addParticle(ParticleTypes.SOUL_FIRE_FLAME, msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, 0.05, 0);
+                        }
+                    }
                     case "sandstorm" -> mc.level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, msg.getX() + ox * 4, msg.getY() + oy, msg.getZ() + oz * 4, 0, 0.02, 0);
-                    case "evolve" -> mc.level.addParticle(ParticleTypes.END_ROD, msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, 0.05, 0);
-                    case "mega" -> mc.level.addParticle(ParticleTypes.DRAGON_BREATH, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.02, 0);
-                    case "static" -> mc.level.addParticle(ParticleTypes.ELECTRIC_SPARK, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
-                    case "tarred" -> mc.level.addParticle(ParticleTypes.SQUID_INK, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
-                    default -> mc.level.addParticle(ParticleTypes.PORTAL, msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0, 0);
+                    case "evolve"  -> mc.level.addParticle(ParticleTypes.END_ROD, msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, 0.05, 0);
+                    case "mega"    -> mc.level.addParticle(ParticleTypes.DRAGON_BREATH, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.02, 0);
+                    case "static"  -> mc.level.addParticle(ParticleTypes.ELECTRIC_SPARK, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
+                    case "tarred"  -> mc.level.addParticle(ParticleTypes.SQUID_INK, msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0, 0);
+
+                    // ── Dodge wave: subtle expanding ring of white smoke ──────────────────
+                    case "dodge_wave" -> {
+                        // Each call spawns one ring-point; count=12 gives a full ring
+                        double angle = (i / (double) msg.getCount()) * Math.PI * 2.0;
+                        double radius = 0.6;
+                        double rx = Math.cos(angle) * radius;
+                        double rz = Math.sin(angle) * radius;
+                        mc.level.addParticle(ParticleTypes.POOF,
+                                msg.getX() + rx, msg.getY() + 0.05, msg.getZ() + rz,
+                                rx * 0.03, 0.0, rz * 0.03);
+                    }
+
+                    // ── Blind: dark splotch of missed impact ─────────────────────────────
+                    case "blind" -> mc.level.addParticle(ParticleTypes.SMOKE,
+                            msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.01, 0);
+
+                    // ── Mana Leech: purple/blue drain wisps ─────────────────────────────
+                    case "mana_leech" -> mc.level.addParticle(ParticleTypes.ENCHANTED_HIT,
+                            msg.getX() + ox, msg.getY() + oy + 0.5, msg.getZ() + oz, 0, 0.05, 0);
+
+                    // ── Marked: crimson crit sparks ──────────────────────────────────────
+                    case "marked" -> mc.level.addParticle(ParticleTypes.DAMAGE_INDICATOR,
+                            msg.getX() + ox * 0.5, msg.getY() + oy + 0.8, msg.getZ() + oz * 0.5, 0, 0.02, 0);
+
+                    // ── Doomed: dark portal particles circling the victim ────────────────
+                    case "doomed" -> mc.level.addParticle(ParticleTypes.PORTAL,
+                            msg.getX() + ox, msg.getY() + oy + 1.0, msg.getZ() + oz, 0, -0.05, 0);
+
+                    default -> mc.level.addParticle(ParticleTypes.PORTAL,
+                            msg.getX() + ox, msg.getY() + oy, msg.getZ() + oz, 0, 0, 0);
+                }
+            }
+        }
+    }
+
+    public static void handleDoomfistDash(DoomfistDashPacket msg) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            Entity entity = mc.level.getEntity(msg.getEntityId());
+            if (entity instanceof LivingEntity living) {
+                CompoundTag tag = living.getPersistentData();
+                if (msg.isDashing()) {
+                    tag.putBoolean("xebDoomfistDashing", true);
+                    tag.putInt("xebDoomfistDashTimer", 15);
+                    tag.putFloat("xebDoomfistChargeRatio", msg.getChargeRatio());
+                } else {
+                    tag.remove("xebDoomfistDashing");
+                    tag.remove("xebDoomfistDashTimer");
+                    tag.remove("xebDoomfistChargeRatio");
+                }
+            }
+        }
+    }
+
+    public static void handleDoomfistAbility(DoomfistAbilitySyncPacket msg) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            Entity entity = mc.level.getEntity(msg.getEntityId());
+            if (entity instanceof LivingEntity living) {
+                CompoundTag tag = living.getPersistentData();
+                tag.putInt("xebUppercutFloatTicks", msg.getUppercutFloatTicks());
+                tag.putInt("xebSlamState", msg.getSlamState());
+                
+                // Sync remaining cooldown values
+                if (msg.getUppercutCooldown() > 0) {
+                    tag.putInt("xebUppercutCooldownTicks", msg.getUppercutCooldown());
+                }
+                if (msg.getSlamCooldown() > 0) {
+                    tag.putInt("xebSlamCooldownTicks", msg.getSlamCooldown());
+                }
+
+                if (msg.getSlamState() == 1) {
+                    tag.putInt("xebSlamTimer", 15);
+                } else if (msg.getSlamState() == 2) {
+                    // Sync target coordinates during slam phase
+                    tag.putDouble("xebSlamTargetX", msg.getTargetX());
+                    tag.putDouble("xebSlamTargetY", msg.getTargetY());
+                    tag.putDouble("xebSlamTargetZ", msg.getTargetZ());
+                } else if (msg.getSlamState() == 0) {
+                    tag.remove("xebSlamTimer");
+                    tag.remove("xebSlamState");
+                    tag.remove("xebSlamTargetX");
+                    tag.remove("xebSlamTargetY");
+                    tag.remove("xebSlamTargetZ");
                 }
             }
         }
